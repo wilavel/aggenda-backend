@@ -1,2 +1,8 @@
-# Terraform
+# Archivos de Terraform a ignorar
 .terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+terraform.tfvars
+terraform.auto.tfvars
+*.terraform.lock.hcl
