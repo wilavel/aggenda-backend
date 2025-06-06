@@ -75,7 +75,7 @@ resource "aws_iam_role_policy_attachment" "lambda_cognito_attachment" {
 
 resource "aws_lambda_function" "users_crud" {
   filename         = var.lambda_zip_path
-  function_name    = "${var.environment}-users-crud"
+  function_name    = "users-crud-${var.environment}"
   role            = aws_iam_role.lambda_role.arn
   handler         = "lambda_function.lambda_handler"
   runtime         = var.lambda_runtime

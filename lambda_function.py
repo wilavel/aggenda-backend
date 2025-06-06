@@ -21,6 +21,16 @@ def lambda_handler(event, context):
         http_method = event.get('httpMethod', '')
         path = event.get('path', '')
         
+        # Remover el prefijo del entorno de la ruta si existe
+        if path.startswith('/dev/'):
+            path = path[5:]  # Remover '/dev/'
+        elif path.startswith('/prod/'):
+            path = path[6:]  # Remover '/prod/'
+        
+        # Asegurar que la ruta siempre comience con '/'
+        if not path.startswith('/'):
+            path = '/' + path
+        
         print(f"Method: {http_method}, Path: {path}")  # Log del método y ruta
         
         # Manejar diferentes operaciones CRUD
@@ -57,6 +67,19 @@ def lambda_handler(event, context):
 
 def create_user(event):
     try:
+        # Verificar variables de entorno requeridas
+        required_env_vars = ['COGNITO_USER_POOL_ID', 'DYNAMODB_TABLE']
+        missing_vars = [var for var in required_env_vars if not os.environ.get(var)]
+        
+        if missing_vars:
+            return {
+                'statusCode': 500,
+                'body': json.dumps({
+                    'message': 'Configuration error',
+                    'error': f'Missing required environment variables: {", ".join(missing_vars)}'
+                })
+            }
+
         print("Creating user with event:", json.dumps(event))  # Log del evento de creación
         
         # Obtener el cuerpo de la solicitud
