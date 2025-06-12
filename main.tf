@@ -123,6 +123,13 @@ resource "aws_lambda_function" "users_crud" {
 resource "aws_apigatewayv2_api" "users_api" {
   name          = "users-api-${local.environment}"
   protocol_type = "HTTP"
+  cors_configuration {
+    allow_headers = ["*"]
+    allow_methods = ["*"]
+    allow_origins = ["*"]
+    expose_headers = ["*"]
+    max_age = 300
+  }
 }
 
 # API Gateway Stage
@@ -216,6 +223,13 @@ resource "aws_apigatewayv2_route" "delete_user" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
   authorizer_id = aws_apigatewayv2_authorizer.jwt.id
   authorization_type = "JWT"
+}
+
+# Ruta para login (sin autorización)
+resource "aws_apigatewayv2_route" "login" {
+  api_id    = aws_apigatewayv2_api.users_api.id
+  route_key = "POST /login"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
 
 output "api_endpoint" {

@@ -2,6 +2,14 @@ resource "aws_apigatewayv2_api" "users_api" {
   name          = "${var.environment}-users-api"
   protocol_type = "HTTP"
 
+  cors_configuration {
+    allow_headers = ["*"]
+    allow_methods = ["*"]
+    allow_origins = ["*"]
+    expose_headers = ["*"]
+    max_age = 300
+  }
+
   tags = {
     Environment = var.environment
     Project     = var.project_name
