@@ -39,6 +39,102 @@ resource "aws_dynamodb_table" "users_table" {
   tags = local.tags
 }
 
+# Doctors Table
+resource "aws_dynamodb_table" "doctors_table" {
+  name           = "doctors-${local.environment}"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "id"
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
+
+  attribute {
+    name = "specialty"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "SpecialtyIndex"
+    hash_key        = "specialty"
+    projection_type = "ALL"
+  }
+
+  tags = local.tags
+}
+
+# Patients Table
+resource "aws_dynamodb_table" "patients_table" {
+  name           = "patients-${local.environment}"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "id"
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
+
+  tags = local.tags
+}
+
+# Clinics Table
+resource "aws_dynamodb_table" "clinics_table" {
+  name           = "clinics-${local.environment}"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "id"
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
+
+  tags = local.tags
+}
+
+# Appointments Table
+resource "aws_dynamodb_table" "appointments_table" {
+  name           = "appointments-${local.environment}"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "id"
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
+
+  attribute {
+    name = "doctor_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "patient_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "appointment_date"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "DoctorAppointmentsIndex"
+    hash_key        = "doctor_id"
+    range_key       = "appointment_date"
+    projection_type = "ALL"
+  }
+
+  global_secondary_index {
+    name            = "PatientAppointmentsIndex"
+    hash_key        = "patient_id"
+    range_key       = "appointment_date"
+    projection_type = "ALL"
+  }
+
+  tags = local.tags
+}
+
 # IAM Role for Lambda
 resource "aws_iam_role" "lambda_role" {
   name = "lambda_dynamodb_role_${local.environment}"
@@ -75,7 +171,15 @@ resource "aws_iam_policy" "lambda_dynamodb_policy" {
           "dynamodb:Query"
         ]
         Effect   = "Allow"
-        Resource = aws_dynamodb_table.users_table.arn
+        Resource = [
+          aws_dynamodb_table.users_table.arn,
+          aws_dynamodb_table.doctors_table.arn,
+          aws_dynamodb_table.patients_table.arn,
+          aws_dynamodb_table.clinics_table.arn,
+          aws_dynamodb_table.appointments_table.arn,
+          "${aws_dynamodb_table.doctors_table.arn}/index/*",
+          "${aws_dynamodb_table.appointments_table.arn}/index/*"
+        ]
       }
     ]
   })
@@ -107,7 +211,7 @@ resource "aws_lambda_function" "users_crud" {
   filename         = "lambda_function.zip"
   function_name    = "users-crud-${local.environment}"
   role            = aws_iam_role.lambda_role.arn
-  handler         = "lambda_function.lambda_handler"
+  handler         = "src.users_function.lambda_handler"
   runtime         = "python3.9"
   timeout         = 30
   memory_size     = 128
@@ -151,6 +255,56 @@ resource "aws_apigatewayv2_integration" "lambda_integration" {
 # Cognito User Pool
 resource "aws_cognito_user_pool" "users" {
   name = "users-pool-${local.environment}"
+
+  # Configuración para usar email como método de inicio de sesión
+  username_attributes = ["email"]
+  auto_verified_attributes = ["email"]
+
+  # Configuración de políticas de contraseña
+  password_policy {
+    minimum_length    = 8
+    require_lowercase = true
+    require_numbers   = true
+    require_symbols   = true
+    require_uppercase = true
+  }
+
+  # Configuración de verificación de email
+  verification_message_template {
+    default_email_option = "CONFIRM_WITH_CODE"
+    email_subject = "Tu código de verificación"
+    email_message = "Tu código de verificación es {####}"
+  }
+
+  # Configuración de esquema de atributos
+  schema {
+    attribute_data_type      = "String"
+    developer_only_attribute = false
+    mutable                  = true
+    name                     = "email"
+    required                 = true
+
+    string_attribute_constraints {
+      min_length = 1
+      max_length = 256
+    }
+  }
+
+  # Configuración de políticas de usuario
+  admin_create_user_config {
+    allow_admin_create_user_only = false
+  }
+
+  # Configuración de MFA
+  mfa_configuration = "OFF"
+
+  # Configuración de recuperación de cuenta
+  account_recovery_setting {
+    recovery_mechanism {
+      name     = "verified_email"
+      priority = 1
+    }
+  }
 }
 
 # Cognito User Pool Client
@@ -158,18 +312,31 @@ resource "aws_cognito_user_pool_client" "users_client" {
   name         = "users-client-${local.environment}"
   user_pool_id = aws_cognito_user_pool.users.id
   generate_secret = false
+
+  # Configuración de flujos de autenticación
   explicit_auth_flows = [
     "ALLOW_USER_PASSWORD_AUTH",
     "ALLOW_REFRESH_TOKEN_AUTH",
     "ALLOW_USER_SRP_AUTH",
     "ALLOW_ADMIN_USER_PASSWORD_AUTH"
   ]
+
+  # Configuración de OAuth
   allowed_oauth_flows = ["code", "implicit"]
   allowed_oauth_scopes = ["email", "openid", "profile"]
   allowed_oauth_flows_user_pool_client = true
+
+  # URLs de callback y logout
   callback_urls = ["https://example.com/callback"]
   logout_urls   = ["https://example.com/logout"]
+
+  # Proveedores de identidad soportados
   supported_identity_providers = ["COGNITO"]
+
+  # Configuración de tokens
+  refresh_token_validity = 30
+  access_token_validity  = 1
+  id_token_validity     = 1
 }
 
 # API Gateway JWT Authorizer
