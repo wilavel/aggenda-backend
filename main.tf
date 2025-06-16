@@ -156,7 +156,7 @@ resource "aws_iam_role" "lambda_role" {
 # IAM Policy for DynamoDB access
 resource "aws_iam_policy" "lambda_dynamodb_policy" {
   name        = "lambda_dynamodb_policy_${local.environment}"
-  description = "IAM policy for Lambda to access DynamoDB"
+  description = "IAM policy for Lambda to access DynamoDB and Cognito"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -180,6 +180,25 @@ resource "aws_iam_policy" "lambda_dynamodb_policy" {
           "${aws_dynamodb_table.doctors_table.arn}/index/*",
           "${aws_dynamodb_table.appointments_table.arn}/index/*"
         ]
+      },
+      {
+        Action = [
+          "cognito-idp:AdminListGroupsForUser",
+          "cognito-idp:AdminGetUser",
+          "cognito-idp:AdminCreateUser",
+          "cognito-idp:AdminSetUserPassword",
+          "cognito-idp:AdminInitiateAuth",
+          "cognito-idp:AdminRespondToAuthChallenge",
+          "cognito-idp:AdminAddUserToGroup",
+          "cognito-idp:AdminListGroups",
+          "cognito-idp:AdminGetGroup",
+          "cognito-idp:AdminDeleteUser",
+          "cognito-idp:AdminRemoveUserFromGroup",
+          "cognito-idp:GetGroup",
+          "cognito-idp:CreateGroup"
+        ]
+        Effect   = "Allow"
+        Resource = aws_cognito_user_pool.users.arn
       }
     ]
   })
@@ -211,7 +230,7 @@ resource "aws_lambda_function" "users_crud" {
   filename         = "lambda_function.zip"
   function_name    = "users-crud-${local.environment}"
   role            = aws_iam_role.lambda_role.arn
-  handler         = "src.users_function.lambda_handler"
+  handler         = "users_function.lambda_handler"
   runtime         = "python3.9"
   timeout         = 30
   memory_size     = 128
@@ -219,6 +238,7 @@ resource "aws_lambda_function" "users_crud" {
   environment {
     variables = {
       DYNAMODB_TABLE = aws_dynamodb_table.users_table.name
+      COGNITO_USER_POOL_ID = aws_cognito_user_pool.users.id
     }
   }
 }
@@ -337,6 +357,28 @@ resource "aws_cognito_user_pool_client" "users_client" {
   refresh_token_validity = 30
   access_token_validity  = 1
   id_token_validity     = 1
+}
+
+# Cognito Groups
+resource "aws_cognito_user_group" "doctors" {
+  name         = "doctors"
+  user_pool_id = aws_cognito_user_pool.users.id
+  description  = "Group for medical doctors"
+  precedence   = 1
+}
+
+resource "aws_cognito_user_group" "patients" {
+  name         = "patients"
+  user_pool_id = aws_cognito_user_pool.users.id
+  description  = "Group for patients"
+  precedence   = 2
+}
+
+resource "aws_cognito_user_group" "managers" {
+  name         = "managers"
+  user_pool_id = aws_cognito_user_pool.users.id
+  description  = "Group for clinic managers"
+  precedence   = 3
 }
 
 # API Gateway JWT Authorizer
