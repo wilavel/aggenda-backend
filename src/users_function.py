@@ -97,7 +97,7 @@ def lambda_handler(event, context):
         print(f"Method: {http_method}, Path: {path}")
         
         # Verificar permisos de administrador para operaciones sensibles
-        if http_method in ['POST', 'PUT', 'DELETE'] :
+        if http_method in ['POST', 'PUT', 'DELETE']:
             if not is_admin_user(event):
                 return {
                     'statusCode': 403,
@@ -310,23 +310,63 @@ def create_user(event):
                 'id': user_id,
                 'name': name,
                 'email': email,
+                'phone': body.get('phone', ''),  # Agregar el número de teléfono
                 'cognito_username': email,
                 'is_admin': is_admin,
-                'group': user_group,  # Agregar el grupo a DynamoDB
+                'group': user_group,
                 'created_at': current_time,
                 'updated_at': current_time
             }
             
-            table.put_item(Item=item)
-            print("DynamoDB user created:", json.dumps(item, default=str))
-            
-            return {
-                'statusCode': 201,
-                'body': json.dumps({
-                    'message': 'User created successfully',
-                    'user': item
-                }, default=str)
-            }
+            try:
+                # Verificar si el usuario ya existe en DynamoDB
+                existing_user = table.get_item(
+                    Key={'id': user_id}
+                )
+                
+                if 'Item' in existing_user:
+                    print(f"User {user_id} already exists in DynamoDB")
+                    return {
+                        'statusCode': 400,
+                        'body': json.dumps({
+                            'message': 'User already exists',
+                            'details': 'A user with this ID already exists in the database'
+                        }, default=str)
+                    }
+                
+                # Crear el usuario en DynamoDB
+                table.put_item(
+                    Item=item,
+                    ConditionExpression='attribute_not_exists(id)'  # Asegurar que el ID no existe
+                )
+                print("DynamoDB user created successfully:", json.dumps(item, default=str))
+                
+                # Verificar que el usuario fue creado
+                verification = table.get_item(
+                    Key={'id': user_id}
+                )
+                if 'Item' not in verification:
+                    raise Exception("Failed to verify user creation in DynamoDB")
+                
+                return {
+                    'statusCode': 201,
+                    'body': json.dumps({
+                        'message': 'User created successfully',
+                        'user': item
+                    }, default=str)
+                }
+            except Exception as e:
+                print(f"Error creating user in DynamoDB: {str(e)}")
+                # Si falla la creación en DynamoDB, eliminar el usuario de Cognito
+                try:
+                    cognito.admin_delete_user(
+                        UserPoolId=os.environ['COGNITO_USER_POOL_ID'],
+                        Username=email
+                    )
+                    print(f"User {email} deleted from Cognito due to DynamoDB creation failure")
+                except Exception as delete_error:
+                    print(f"Error deleting user from Cognito: {str(delete_error)}")
+                raise Exception(f"Failed to create user in DynamoDB: {str(e)}")
         except cognito.exceptions.UsernameExistsException:
             print("User already exists in Cognito")
             return {

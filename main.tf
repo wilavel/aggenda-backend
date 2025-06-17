@@ -441,6 +441,85 @@ resource "aws_apigatewayv2_route" "login" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
 
+# API Gateway Routes for Clinics
+resource "aws_apigatewayv2_route" "post_clinics" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "POST /clinics"
+  target             = "integrations/${aws_apigatewayv2_integration.clinics_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "get_clinics" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "GET /clinics"
+  target             = "integrations/${aws_apigatewayv2_integration.clinics_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "get_clinic" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "GET /clinics/{clinic_id}"
+  target             = "integrations/${aws_apigatewayv2_integration.clinics_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "put_clinic" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "PUT /clinics/{clinic_id}"
+  target             = "integrations/${aws_apigatewayv2_integration.clinics_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "delete_clinic" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "DELETE /clinics/{clinic_id}"
+  target             = "integrations/${aws_apigatewayv2_integration.clinics_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+# Lambda Integration for Clinics
+resource "aws_apigatewayv2_integration" "clinics_integration" {
+  api_id           = aws_apigatewayv2_api.users_api.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.clinics_crud.invoke_arn
+  payload_format_version = "2.0"
+}
+
+# Lambda Permission for Clinics
+resource "aws_lambda_permission" "clinics_api_gw" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.clinics_crud.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.users_api.execution_arn}/*/*"
+}
+
+# Lambda Function for Clinics
+resource "aws_lambda_function" "clinics_crud" {
+  filename         = "lambda_function.zip"
+  function_name    = "clinics-crud-${local.environment}"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "clinics_function.lambda_handler"
+  runtime         = "python3.9"
+  timeout         = 30
+  memory_size     = 256
+
+  environment {
+    variables = {
+      CLINICS_TABLE = aws_dynamodb_table.clinics_table.name
+      USERS_TABLE   = aws_dynamodb_table.users_table.name
+      USER_POOL_ID  = aws_cognito_user_pool.users.id
+    }
+  }
+
+  tags = local.tags
+}
+
 output "api_endpoint" {
   value = "${aws_apigatewayv2_api.users_api.api_endpoint}/${local.environment}"
   description = "The URL of the API Gateway endpoint"
