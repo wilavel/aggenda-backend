@@ -76,4 +76,32 @@ resource "aws_cognito_user_pool_client" "users_client" {
   refresh_token_validity = 30
   access_token_validity  = 1
   id_token_validity     = 1
+}
+
+resource "aws_cognito_user_group" "administrator_group" {
+  user_pool_id = aws_cognito_user_pool.users_pool.id
+  name         = "Administrator"
+  description  = "Grupo de administradores"
+  precedence   = 1
+}
+
+resource "aws_cognito_user_group" "managers" {
+  user_pool_id = aws_cognito_user_pool.users_pool.id
+  name         = "managers"
+  description  = "Grupo de managers"
+  precedence   = 2
+}
+
+resource "aws_cognito_user_group" "clients" {
+  user_pool_id = aws_cognito_user_pool.users_pool.id
+  name         = "clients"
+  description  = "Grupo de clientes"
+  precedence   = 3
+}
+
+resource "aws_cognito_user_group" "medicos" {
+  user_pool_id = aws_cognito_user_pool.users_pool.id
+  name         = "medicos"
+  description  = "Grupo de médicos"
+  precedence   = 4
 } 
