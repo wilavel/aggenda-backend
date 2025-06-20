@@ -179,7 +179,7 @@ def create_user(event):
             }
         
         # Validar que el grupo sea válido
-        valid_groups = ['doctors', 'patients', 'managers']
+        valid_groups = ['Doctors', 'CLients', 'Managers']
         if user_group not in valid_groups:
             return {
                 'statusCode': 400,

@@ -385,10 +385,10 @@ resource "aws_cognito_user_group" "patients" {
   precedence   = 2
 }
 
-resource "aws_cognito_user_group" "managers" {
-  name         = "managers"
+resource "aws_cognito_user_group" "Managers" {
+  name         = "Managers"
   user_pool_id = aws_cognito_user_pool.users.id
-  description  = "Group for clinic managers"
+  description  = "Group for clinic Managers"
   precedence   = 3
 }
 

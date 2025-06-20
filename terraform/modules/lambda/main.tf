@@ -54,10 +54,33 @@ resource "aws_iam_policy" "lambda_cognito_policy" {
           "cognito-idp:AdminCreateUser",
           "cognito-idp:AdminSetUserPassword",
           "cognito-idp:AdminUpdateUserAttributes",
-          "cognito-idp:AdminDeleteUser"
+          "cognito-idp:AdminDeleteUser",
+          "cognito-idp:AdminListGroupsForUser",
+          "cognito-idp:GetGroup",
+          "cognito-idp:AdminAddUserToGroup"
         ]
         Effect   = "Allow"
         Resource = var.cognito_user_pool_arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy" "lambda_cloudwatch_policy" {
+  name        = "${var.environment}-lambda-cloudwatch-policy"
+  description = "IAM policy for Lambda to write logs to CloudWatch"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Effect   = "Allow"
+        Resource = "arn:aws:logs:*:*:*"
       }
     ]
   })
@@ -71,6 +94,11 @@ resource "aws_iam_role_policy_attachment" "lambda_dynamodb_attachment" {
 resource "aws_iam_role_policy_attachment" "lambda_cognito_attachment" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = aws_iam_policy.lambda_cognito_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_cloudwatch_attachment" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.lambda_cloudwatch_policy.arn
 }
 
 resource "aws_lambda_function" "users_crud" {
