@@ -49,4 +49,14 @@ variable "lambda_memory_size" {
   description = "Lambda memory size in MB"
   type        = number
   default     = 128
+}
+
+variable "users_lambda_zip_path" {
+  description = "Path to the users Lambda function ZIP file"
+  type        = string
+}
+
+variable "clinics_lambda_zip_path" {
+  description = "Path to the clinics Lambda function ZIP file"
+  type        = string
 } 

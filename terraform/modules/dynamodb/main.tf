@@ -13,7 +13,7 @@ resource "aws_dynamodb_table" "users_table" {
     Environment = var.environment
     Project     = var.project_name
   }
-}
+} 
 
 # Tabla para clínicas
 resource "aws_dynamodb_table" "clinics_table" {

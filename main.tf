@@ -17,6 +17,16 @@ variable "environment" {
   default     = "dev"
 }
 
+variable "users_lambda_zip_path" {
+  description = "Path to the users lambda zip file"
+  type        = string
+}
+
+variable "clinics_lambda_zip_path" {
+  description = "Path to the clinics lambda zip file"
+  type        = string
+}
+
 locals {
   environment = var.environment
   tags = {
@@ -227,10 +237,11 @@ resource "aws_iam_role_policy_attachment" "lambda_logs_attachment" {
 
 # Lambda Function
 resource "aws_lambda_function" "users_crud" {
-  filename         = "lambda_function.zip"
+  filename         = var.users_lambda_zip_path
+  source_code_hash = filebase64sha256(var.users_lambda_zip_path)
   function_name    = "users-crud-${local.environment}"
   role            = aws_iam_role.lambda_role.arn
-  handler         = "users_function.lambda_handler"
+  handler         = "src/users_function.lambda_handler"
   runtime         = "python3.9"
   timeout         = 30
   memory_size     = 128
@@ -501,10 +512,11 @@ resource "aws_lambda_permission" "clinics_api_gw" {
 
 # Lambda Function for Clinics
 resource "aws_lambda_function" "clinics_crud" {
-  filename         = "lambda_function.zip"
+  filename         = var.clinics_lambda_zip_path
+  source_code_hash = filebase64sha256(var.clinics_lambda_zip_path)
   function_name    = "clinics-crud-${local.environment}"
   role            = aws_iam_role.lambda_role.arn
-  handler         = "clinics_function.lambda_handler"
+  handler         = "src/clinics_function.lambda_handler"
   runtime         = "python3.9"
   timeout         = 30
   memory_size     = 256

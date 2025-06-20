@@ -74,10 +74,35 @@ resource "aws_iam_role_policy_attachment" "lambda_cognito_attachment" {
 }
 
 resource "aws_lambda_function" "users_crud" {
-  filename         = var.lambda_zip_path
+  filename         = var.users_lambda_zip_path
+  source_code_hash = filebase64sha256(var.users_lambda_zip_path)
   function_name    = "users-crud-${var.environment}"
   role            = aws_iam_role.lambda_role.arn
-  handler         = "lambda_function.lambda_handler"
+  handler         = "users_function.lambda_handler"
+  runtime         = var.lambda_runtime
+  timeout         = var.lambda_timeout
+  memory_size     = var.lambda_memory_size
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE     = var.dynamodb_table_name
+      ENVIRONMENT        = var.environment
+      COGNITO_USER_POOL_ID = var.cognito_user_pool_id
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+resource "aws_lambda_function" "clinics_crud" {
+  filename         = var.clinics_lambda_zip_path
+  source_code_hash = filebase64sha256(var.clinics_lambda_zip_path)
+  function_name    = "clinics-crud-${var.environment}"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "clinics_function.lambda_handler"
   runtime         = var.lambda_runtime
   timeout         = var.lambda_timeout
   memory_size     = var.lambda_memory_size

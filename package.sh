@@ -1,24 +1,21 @@
 #!/bin/bash
 
-# Clean up any existing package
-rm -f lambda_function.zip
-rm -rf temp_package
-
-# Create a temporary directory for packaging
+# Empaquetar users_lambda.zip
+rm -f users_lambda.zip && rm -rf temp_package
 mkdir -p temp_package
-
-# Copy the source code to the temporary directory
-cp -v src/users_function.py temp_package/
-
-# Make sure the file has the correct permissions
-chmod 644 temp_package/users_function.py
-
-# Create the zip file
-cd temp_package
-zip -r ../lambda_function.zip .
-cd ..
-
-# Clean up
+cp src/users_function.py temp_package/
+if [ -d libs ]; then mkdir -p temp_package/libs && cp -r libs/* temp_package/libs/; fi
+cd temp_package && zip -r ../users_lambda.zip . && cd ..
 rm -rf temp_package
 
-echo "Lambda function packaged successfully!" 
+echo "users_lambda.zip empaquetado correctamente."
+
+# Empaquetar clinics_lambda.zip
+rm -f clinics_lambda.zip && rm -rf temp_package
+mkdir -p temp_package
+cp src/clinics_function.py temp_package/
+if [ -d libs ]; then mkdir -p temp_package/libs && cp -r libs/* temp_package/libs/; fi
+cd temp_package && zip -r ../clinics_lambda.zip . && cd ..
+rm -rf temp_package
+
+echo "clinics_lambda.zip empaquetado correctamente." 

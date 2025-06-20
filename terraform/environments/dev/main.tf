@@ -32,6 +32,8 @@ module "lambda" {
   lambda_runtime        = var.lambda_runtime
   lambda_timeout        = var.lambda_timeout
   lambda_memory_size    = var.lambda_memory_size
+  users_lambda_zip_path   = "users_lambda.zip"
+  clinics_lambda_zip_path = "clinics_lambda.zip"
 }
 
 module "api_gateway" {

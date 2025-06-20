@@ -1,6 +1,8 @@
 resource "aws_cognito_user_pool" "users_pool" {
   name = "${var.environment}-users-pool"
 
+  username_attributes = ["email"]
+
   password_policy {
     minimum_length    = 8
     require_lowercase = true
@@ -66,7 +68,7 @@ resource "aws_cognito_user_pool_client" "users_client" {
   supported_identity_providers = ["COGNITO"]
 
   prevent_user_existence_errors = "ENABLED"
-  
+
   token_validity_units {
     refresh_token = "days"
     access_token  = "hours"
@@ -85,23 +87,23 @@ resource "aws_cognito_user_group" "administrator_group" {
   precedence   = 1
 }
 
-resource "aws_cognito_user_group" "managers" {
+resource "aws_cognito_user_group" "Managers" {
   user_pool_id = aws_cognito_user_pool.users_pool.id
-  name         = "managers"
-  description  = "Grupo de managers"
+  name         = "Managers"
+  description  = "Grupo de Managers"
   precedence   = 2
 }
 
-resource "aws_cognito_user_group" "clients" {
+resource "aws_cognito_user_group" "Clients" {
   user_pool_id = aws_cognito_user_pool.users_pool.id
-  name         = "clients"
+  name         = "Clients"
   description  = "Grupo de clientes"
   precedence   = 3
 }
 
-resource "aws_cognito_user_group" "medicos" {
+resource "aws_cognito_user_group" "Doctors" {
   user_pool_id = aws_cognito_user_pool.users_pool.id
-  name         = "medicos"
+  name         = "Doctors"
   description  = "Grupo de médicos"
   precedence   = 4
 } 
