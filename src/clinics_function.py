@@ -2,6 +2,7 @@ import json
 import os
 import sys
 from datetime import datetime
+import logging
 
 # Add lib directory to Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
@@ -9,7 +10,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
 import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
-from aws_lambda_powertools.utilities.typing import LambdaContext
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 # Initialize AWS clients
 dynamodb = boto3.resource('dynamodb')
@@ -27,7 +30,7 @@ def is_admin_user(event):
     try:
         # Get the claims from the authorizer
         claims = event.get('requestContext', {}).get('authorizer', {}).get('jwt', {}).get('claims', {})
-        print("User claims:", json.dumps(claims))
+        logger.info(f"User claims: {json.dumps(claims)}")
         
         # Get the groups from the claims
         groups_str = claims.get('cognito:groups', '[]')
@@ -39,21 +42,21 @@ def is_admin_user(event):
             groups_str = groups_str.strip('[]')
             groups = [group.strip() for group in groups_str.split(',') if group.strip()]
         
-        print(f"User groups: {groups}")
+        logger.info(f"User groups: {groups}")
         is_admin = 'Administrator' in groups
-        print(f"Is admin: {is_admin}")
+        logger.info(f"Is admin: {is_admin}")
         
         return is_admin
     except Exception as e:
-        print(f"Error checking admin privileges: {str(e)}")
-        print("Event structure:", json.dumps(event))
+        logger.error(f"Error checking admin privileges: {str(e)}")
+        logger.error(f"Event structure: {json.dumps(event)}")
         return False
 
-def lambda_handler(event, context: LambdaContext):
+def lambda_handler(event, context):
     """Handle clinic operations based on HTTP method and path"""
     try:
         # Log the received event
-        print("Received event:", json.dumps(event))
+        logger.info(f"Received event: {json.dumps(event)}")
         
         # Get HTTP method and path from API Gateway v2 format
         http_method = event.get('requestContext', {}).get('http', {}).get('method', '')
@@ -69,11 +72,11 @@ def lambda_handler(event, context: LambdaContext):
         if not path.startswith('/'):
             path = '/' + path
         
-        print(f"Processing request - Method: {http_method}, Path: {path}")
+        logger.info(f"Processing request - Method: {http_method}, Path: {path}")
         
         # Check if user is admin for write operations
         if http_method in ['POST', 'PUT', 'DELETE'] and not is_admin_user(event):
-            print(f"Access denied for non-admin user - Method: {http_method}, Path: {path}")
+            logger.warning(f"Access denied for non-admin user - Method: {http_method}, Path: {path}")
             return {
                 'statusCode': 403,
                 'body': json.dumps({
@@ -97,7 +100,7 @@ def lambda_handler(event, context: LambdaContext):
             clinic_id = path.split('/')[-1]
             return delete_clinic(clinic_id)
         else:
-            print(f"Invalid request - Method: {http_method}, Path: {path}")
+            logger.warning(f"Invalid request - Method: {http_method}, Path: {path}")
             return {
                 'statusCode': 400,
                 'body': json.dumps({
@@ -107,7 +110,7 @@ def lambda_handler(event, context: LambdaContext):
             }
 
     except Exception as e:
-        print(f"Unexpected error: {str(e)}")
+        logger.error(f"Unexpected error: {str(e)}")
         return {
             'statusCode': 500,
             'body': json.dumps({
@@ -119,11 +122,11 @@ def lambda_handler(event, context: LambdaContext):
 def get_clinics():
     """Get all clinics from DynamoDB"""
     try:
-        print("Fetching all clinics")
+        logger.info("Fetching all clinics")
         table = dynamodb.Table(CLINICS_TABLE)
         response = table.scan()
         
-        print(f"Successfully retrieved {len(response.get('Items', []))} clinics")
+        logger.info(f"Successfully retrieved {len(response.get('Items', []))} clinics")
         return {
             'statusCode': 200,
             'body': json.dumps({
@@ -131,7 +134,7 @@ def get_clinics():
             })
         }
     except Exception as e:
-        print(f"Error getting clinics: {str(e)}")
+        logger.error(f"Error getting clinics: {str(e)}")
         return {
             'statusCode': 500,
             'body': json.dumps({
@@ -143,12 +146,12 @@ def get_clinics():
 def get_clinic(clinic_id):
     """Get a specific clinic by ID"""
     try:
-        print(f"Fetching clinic with ID: {clinic_id}")
+        logger.info(f"Fetching clinic with ID: {clinic_id}")
         table = dynamodb.Table(CLINICS_TABLE)
         response = table.get_item(Key={'id': clinic_id})
         
         if 'Item' not in response:
-            print(f"Clinic not found with ID: {clinic_id}")
+            logger.info(f"Clinic not found with ID: {clinic_id}")
             return {
                 'statusCode': 404,
                 'body': json.dumps({
@@ -157,13 +160,13 @@ def get_clinic(clinic_id):
                 })
             }
         
-        print(f"Successfully retrieved clinic with ID: {clinic_id}")
+        logger.info(f"Successfully retrieved clinic with ID: {clinic_id}")
         return {
             'statusCode': 200,
             'body': json.dumps(response['Item'])
         }
     except Exception as e:
-        print(f"Error getting clinic {clinic_id}: {str(e)}")
+        logger.error(f"Error getting clinic {clinic_id}: {str(e)}")
         return {
             'statusCode': 500,
             'body': json.dumps({
@@ -183,7 +186,7 @@ def create_clinic(event):
         missing_fields = [field for field in required_fields if field not in body]
         
         if missing_fields:
-            print(f"Missing required fields: {missing_fields}")
+            logger.info(f"Missing required fields: {missing_fields}")
             return {
                 'statusCode': 400,
                 'body': json.dumps({
@@ -203,10 +206,10 @@ def create_clinic(event):
             'updated_at': current_time
         }
         
-        print(f"Creating new clinic: {clinic['name']}")
+        logger.info(f"Creating new clinic: {clinic['name']}")
         table.put_item(Item=clinic)
         
-        print(f"Successfully created clinic with ID: {clinic['id']}")
+        logger.info(f"Successfully created clinic with ID: {clinic['id']}")
         return {
             'statusCode': 201,
             'body': json.dumps({
@@ -215,7 +218,7 @@ def create_clinic(event):
             })
         }
     except Exception as e:
-        print(f"Error creating clinic: {str(e)}")
+        logger.error(f"Error creating clinic: {str(e)}")
         return {
             'statusCode': 500,
             'body': json.dumps({
@@ -233,7 +236,7 @@ def update_clinic(event, clinic_id):
         # Check if clinic exists
         response = table.get_item(Key={'id': clinic_id})
         if 'Item' not in response:
-            print(f"Clinic not found with ID: {clinic_id}")
+            logger.info(f"Clinic not found with ID: {clinic_id}")
             return {
                 'statusCode': 404,
                 'body': json.dumps({
@@ -261,7 +264,7 @@ def update_clinic(event, clinic_id):
         update_expression += 'updated_at = :updated_at'
         expression_values[':updated_at'] = datetime.now().isoformat()
         
-        print(f"Updating clinic with ID: {clinic_id}")
+        logger.info(f"Updating clinic with ID: {clinic_id}")
         table.update_item(
             Key={'id': clinic_id},
             UpdateExpression=update_expression,
@@ -270,7 +273,7 @@ def update_clinic(event, clinic_id):
         
         # Get updated clinic
         response = table.get_item(Key={'id': clinic_id})
-        print(f"Successfully updated clinic with ID: {clinic_id}")
+        logger.info(f"Successfully updated clinic with ID: {clinic_id}")
         
         return {
             'statusCode': 200,
@@ -280,7 +283,7 @@ def update_clinic(event, clinic_id):
             })
         }
     except Exception as e:
-        print(f"Error updating clinic: {str(e)}")
+        logger.error(f"Error updating clinic: {str(e)}")
         return {
             'statusCode': 500,
             'body': json.dumps({
@@ -297,7 +300,7 @@ def delete_clinic(clinic_id):
         # Check if clinic exists
         response = table.get_item(Key={'id': clinic_id})
         if 'Item' not in response:
-            print(f"Clinic not found with ID: {clinic_id}")
+            logger.info(f"Clinic not found with ID: {clinic_id}")
             return {
                 'statusCode': 404,
                 'body': json.dumps({
@@ -306,10 +309,10 @@ def delete_clinic(clinic_id):
                 })
             }
         
-        print(f"Deleting clinic with ID: {clinic_id}")
+        logger.info(f"Deleting clinic with ID: {clinic_id}")
         table.delete_item(Key={'id': clinic_id})
         
-        print(f"Successfully deleted clinic with ID: {clinic_id}")
+        logger.info(f"Successfully deleted clinic with ID: {clinic_id}")
         return {
             'statusCode': 200,
             'body': json.dumps({
@@ -318,7 +321,7 @@ def delete_clinic(clinic_id):
             })
         }
     except Exception as e:
-        print(f"Error deleting clinic: {str(e)}")
+        logger.error(f"Error deleting clinic: {str(e)}")
         return {
             'statusCode': 500,
             'body': json.dumps({
