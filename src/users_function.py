@@ -166,15 +166,16 @@ def create_user(event):
         password = body.get('password')
         is_admin = body.get('is_admin', False)
         user_group = body.get('group')  # Nuevo campo para el grupo del usuario
+        document_type = body.get('document_type')  # Tipo de documento
+        document_number = body.get('document_number')  # Número de documento
+        print(f"User data - ID: {user_id}, Name: {name}, Email: {email}, Is Admin: {is_admin}, Group: {user_group}, Document Type: {document_type}, Document Number: {document_number}")
         
-        print(f"User data - ID: {user_id}, Name: {name}, Email: {email}, Is Admin: {is_admin}, Group: {user_group}")
-        
-        if not all([name, email, password, user_group]):
+        if not all([name, email, password, user_group, document_type, document_number]):
             return {
                 'statusCode': 400,
                 'body': json.dumps({
                     'message': 'Missing required fields',
-                    'required_fields': ['name', 'email', 'password', 'group']
+                    'required_fields': ['name', 'email', 'password', 'group', 'document_type', 'document_number']
                 }, default=str)
             }
         
@@ -315,7 +316,9 @@ def create_user(event):
                 'is_admin': is_admin,
                 'group': user_group,
                 'created_at': current_time,
-                'updated_at': current_time
+                'updated_at': current_time,
+                'document_type': document_type,  # Guardar tipo de documento
+                'document_number': document_number  # Guardar número de documento
             }
             
             try:
@@ -510,10 +513,12 @@ def update_user(user_id, event):
         # Actualizar en DynamoDB
         update_expression = 'SET '
         expression_values = {}
+        expression_names = {}
         
         if 'name' in body:
-            update_expression += 'name = :name, '
+            update_expression += '#n = :name, '
             expression_values[':name'] = body['name']
+            expression_names['#n'] = 'name'
         
         if 'email' in body:
             update_expression += 'email = :email, '
@@ -522,14 +527,22 @@ def update_user(user_id, event):
         if 'is_admin' in body:
             update_expression += 'is_admin = :is_admin, '
             expression_values[':is_admin'] = body['is_admin']
-        
+
+        if 'document_type' in body:
+            update_expression += 'document_type = :document_type, '
+            expression_values[':document_type'] = body['document_type']
+        if 'document_number' in body:
+            update_expression += 'document_number = :document_number, '
+            expression_values[':document_number'] = body['document_number']
+
         update_expression += 'updated_at = :updated_at'
         expression_values[':updated_at'] = datetime.now().isoformat()
         
         table.update_item(
             Key={'id': user_id},
             UpdateExpression=update_expression,
-            ExpressionAttributeValues=expression_values
+            ExpressionAttributeValues=expression_values,
+            ExpressionAttributeNames=expression_names
         )
         
         # Obtener el usuario actualizado
