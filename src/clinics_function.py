@@ -11,7 +11,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 
-# Initialize logger
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize AWS clients
@@ -43,7 +43,7 @@ def is_admin_user(event):
             groups = [group.strip() for group in groups_str.split(',') if group.strip()]
         
         logger.info(f"User groups: {groups}")
-        is_admin = 'Administrator' in groups
+        is_admin = 'Administrators' in groups
         logger.info(f"Is admin: {is_admin}")
         
         return is_admin
@@ -81,7 +81,7 @@ def lambda_handler(event, context):
                 'statusCode': 403,
                 'body': json.dumps({
                     'message': 'Access denied',
-                    'details': 'Only administrators can perform this operation'
+                    'details': 'Only Administratorss can perform this operation'
                 })
             }
 
@@ -182,7 +182,7 @@ def create_clinic(event):
         body = json.loads(event.get('body', '{}'))
         
         # Validate required fields
-        required_fields = ['name', 'address']
+        required_fields = ['name', 'address','phone','email']
         missing_fields = [field for field in required_fields if field not in body]
         
         if missing_fields:
@@ -201,6 +201,8 @@ def create_clinic(event):
             'id': str(datetime.now().timestamp()),
             'name': body['name'],
             'address': body['address'],
+            'phone': body['phone'],
+            'email': body['email'],
             'offices': body.get('offices', []),
             'created_at': current_time,
             'updated_at': current_time
@@ -248,28 +250,41 @@ def update_clinic(event, clinic_id):
         # Update clinic
         update_expression = 'SET '
         expression_values = {}
+        expression_names = {}
+        update_fields = []
         
         if 'name' in body:
-            update_expression += 'name = :name, '
+            update_fields.append('#n = :name')
             expression_values[':name'] = body['name']
-        
+            expression_names['#n'] = 'name'
+        if 'phone' in body:
+            update_fields.append('phone = :phone')
+            expression_values[':phone'] = body['phone']
+        if 'email' in body:
+            update_fields.append('email = :email')
+            expression_values[':email'] = body['email']
         if 'address' in body:
-            update_expression += 'address = :address, '
+            update_fields.append('address = :address')
             expression_values[':address'] = body['address']
-            
+        
         if 'offices' in body:
-            update_expression += 'offices = :offices, '
+            update_fields.append('offices = :offices')
             expression_values[':offices'] = body['offices']
         
-        update_expression += 'updated_at = :updated_at'
+        update_fields.append('updated_at = :updated_at')
         expression_values[':updated_at'] = datetime.now().isoformat()
         
+        update_expression += ', '.join(update_fields)
+        
         logger.info(f"Updating clinic with ID: {clinic_id}")
-        table.update_item(
-            Key={'id': clinic_id},
-            UpdateExpression=update_expression,
-            ExpressionAttributeValues=expression_values
-        )
+        update_params = {
+            'Key': {'id': clinic_id},
+            'UpdateExpression': update_expression,
+            'ExpressionAttributeValues': expression_values
+        }
+        if expression_names:
+            update_params['ExpressionAttributeNames'] = expression_names
+        table.update_item(**update_params)
         
         # Get updated clinic
         response = table.get_item(Key={'id': clinic_id})

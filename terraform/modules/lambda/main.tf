@@ -113,9 +113,9 @@ resource "aws_lambda_function" "users_crud" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE     = var.dynamodb_table_name
+      USERS_TABLE        = var.dynamodb_table_name
       ENVIRONMENT        = var.environment
-      COGNITO_USER_POOL_ID = var.cognito_user_pool_id
+      USER_POOL_ID       = var.cognito_user_pool_id
     }
   }
 
@@ -137,9 +137,9 @@ resource "aws_lambda_function" "clinics_crud" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE     = var.dynamodb_table_name
+      CLINICS_TABLE      = var.dynamodb_table_name
       ENVIRONMENT        = var.environment
-      COGNITO_USER_POOL_ID = var.cognito_user_pool_id
+      USER_POOL_ID       = var.cognito_user_pool_id
     }
   }
 

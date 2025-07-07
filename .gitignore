@@ -1,2 +1,14 @@
 # Archivos de Terraform a ignorar
 .terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Archivos ZIP de Lambda
+dist/
+*.zip
+
+# Archivos temporales
+temp_package/
+__pycache__/
+*.pyc

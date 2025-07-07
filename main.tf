@@ -20,11 +20,13 @@ variable "environment" {
 variable "users_lambda_zip_path" {
   description = "Path to the users lambda zip file"
   type        = string
+  default     = "dist/users_lambda.zip"
 }
 
 variable "clinics_lambda_zip_path" {
   description = "Path to the clinics lambda zip file"
   type        = string
+  default     = "dist/clinics_lambda.zip"
 }
 
 locals {
@@ -35,7 +37,7 @@ locals {
   }
 }
 
-# DynamoDB Table
+# DynamoDB Tables
 resource "aws_dynamodb_table" "users_table" {
   name           = "users-${local.environment}"
   billing_mode   = "PAY_PER_REQUEST"
@@ -46,10 +48,28 @@ resource "aws_dynamodb_table" "users_table" {
     type = "S"
   }
 
-  tags = local.tags
+  tags = {
+    Name        = "services-api-${local.environment}"
+    Environment = local.environment
+  }
 }
 
-# Doctors Table
+resource "aws_dynamodb_table" "clinics_table" {
+  name           = "clinics-${local.environment}"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "id"
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
+
+  tags = {
+    Name        = "services-api-${local.environment}"
+    Environment = local.environment
+  }
+}
+
 resource "aws_dynamodb_table" "doctors_table" {
   name           = "doctors-${local.environment}"
   billing_mode   = "PAY_PER_REQUEST"
@@ -71,10 +91,12 @@ resource "aws_dynamodb_table" "doctors_table" {
     projection_type = "ALL"
   }
 
-  tags = local.tags
+  tags = {
+    Name        = "services-api-${local.environment}"
+    Environment = local.environment
+  }
 }
 
-# Patients Table
 resource "aws_dynamodb_table" "patients_table" {
   name           = "patients-${local.environment}"
   billing_mode   = "PAY_PER_REQUEST"
@@ -85,24 +107,12 @@ resource "aws_dynamodb_table" "patients_table" {
     type = "S"
   }
 
-  tags = local.tags
-}
-
-# Clinics Table
-resource "aws_dynamodb_table" "clinics_table" {
-  name           = "clinics-${local.environment}"
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "id"
-
-  attribute {
-    name = "id"
-    type = "S"
+  tags = {
+    Name        = "services-api-${local.environment}"
+    Environment = local.environment
   }
-
-  tags = local.tags
 }
 
-# Appointments Table
 resource "aws_dynamodb_table" "appointments_table" {
   name           = "appointments-${local.environment}"
   billing_mode   = "PAY_PER_REQUEST"
@@ -142,7 +152,10 @@ resource "aws_dynamodb_table" "appointments_table" {
     projection_type = "ALL"
   }
 
-  tags = local.tags
+  tags = {
+    Name        = "services-api-${local.environment}"
+    Environment = local.environment
+  }
 }
 
 # IAM Role for Lambda
@@ -204,8 +217,13 @@ resource "aws_iam_policy" "lambda_dynamodb_policy" {
           "cognito-idp:AdminGetGroup",
           "cognito-idp:AdminDeleteUser",
           "cognito-idp:AdminRemoveUserFromGroup",
+          "cognito-idp:AdminUpdateUserAttributes",
+          "cognito-idp:AdminGetUser",
+          "cognito-idp:GetUser",
           "cognito-idp:GetGroup",
-          "cognito-idp:CreateGroup"
+          "cognito-idp:CreateGroup",
+          "cognito-idp:ListUsers",
+          "cognito-idp:ListGroups"
         ]
         Effect   = "Allow"
         Resource = aws_cognito_user_pool.users.arn
@@ -238,26 +256,36 @@ resource "aws_iam_role_policy_attachment" "lambda_logs_attachment" {
 # Lambda Function
 resource "aws_lambda_function" "users_crud" {
   filename         = var.users_lambda_zip_path
-  source_code_hash = filebase64sha256(var.users_lambda_zip_path)
   function_name    = "users-crud-${local.environment}"
   role            = aws_iam_role.lambda_role.arn
-  handler         = "src/users_function.lambda_handler"
+  handler         = "users_function.lambda_handler"
   runtime         = "python3.9"
   timeout         = 30
-  memory_size     = 128
+  memory_size     = 256
 
   environment {
     variables = {
-      DYNAMODB_TABLE = aws_dynamodb_table.users_table.name
-      COGNITO_USER_POOL_ID = aws_cognito_user_pool.users.id
+      USERS_TABLE    = aws_dynamodb_table.users_table.name
+      CLINICS_TABLE  = aws_dynamodb_table.clinics_table.name
+      DOCTORS_TABLE  = aws_dynamodb_table.doctors_table.name
+      PATIENTS_TABLE = aws_dynamodb_table.patients_table.name
+      APPOINTMENTS_TABLE = aws_dynamodb_table.appointments_table.name
+      USER_POOL_ID   = aws_cognito_user_pool.users.id
+      ENVIRONMENT    = local.environment
     }
+  }
+
+  tags = {
+    Name        = "services-api-${local.environment}"
+    Environment = local.environment
   }
 }
 
 # API Gateway
 resource "aws_apigatewayv2_api" "users_api" {
-  name          = "users-api-${local.environment}"
+  name          = "services-api-${local.environment}"
   protocol_type = "HTTP"
+  
   cors_configuration {
     allow_headers = ["*"]
     allow_methods = ["*"]
@@ -370,16 +398,23 @@ resource "aws_cognito_user_pool_client" "users_client" {
   id_token_validity     = 1
 }
 
-# Cognito Groups
+# Cognito User Groups
+resource "aws_cognito_user_group" "administrators" {
+  name         = "Administrators"
+  user_pool_id = aws_cognito_user_pool.users.id
+  description  = "Group for system administrators"
+  precedence   = 0
+}
+
 resource "aws_cognito_user_group" "doctors" {
-  name         = "doctors"
+  name         = "Doctors"
   user_pool_id = aws_cognito_user_pool.users.id
   description  = "Group for medical doctors"
   precedence   = 1
 }
 
 resource "aws_cognito_user_group" "patients" {
-  name         = "patients"
+  name         = "Patients"
   user_pool_id = aws_cognito_user_pool.users.id
   description  = "Group for patients"
   precedence   = 2
@@ -513,23 +548,29 @@ resource "aws_lambda_permission" "clinics_api_gw" {
 # Lambda Function for Clinics
 resource "aws_lambda_function" "clinics_crud" {
   filename         = var.clinics_lambda_zip_path
-  source_code_hash = filebase64sha256(var.clinics_lambda_zip_path)
   function_name    = "clinics-crud-${local.environment}"
   role            = aws_iam_role.lambda_role.arn
-  handler         = "src/clinics_function.lambda_handler"
+  handler         = "clinics_function.lambda_handler"
   runtime         = "python3.9"
   timeout         = 30
   memory_size     = 256
 
   environment {
     variables = {
-      CLINICS_TABLE = aws_dynamodb_table.clinics_table.name
-      USERS_TABLE   = aws_dynamodb_table.users_table.name
-      USER_POOL_ID  = aws_cognito_user_pool.users.id
+      USERS_TABLE    = aws_dynamodb_table.users_table.name
+      CLINICS_TABLE  = aws_dynamodb_table.clinics_table.name
+      DOCTORS_TABLE  = aws_dynamodb_table.doctors_table.name
+      PATIENTS_TABLE = aws_dynamodb_table.patients_table.name
+      APPOINTMENTS_TABLE = aws_dynamodb_table.appointments_table.name
+      USER_POOL_ID   = aws_cognito_user_pool.users.id
+      ENVIRONMENT    = local.environment
     }
   }
 
-  tags = local.tags
+  tags = {
+    Name        = "services-api-${local.environment}"
+    Environment = local.environment
+  }
 }
 
 output "api_endpoint" {

@@ -5,12 +5,32 @@ import uuid
 from datetime import datetime
 import logging
 
-# Inicializar clientes de AWS
-dynamodb = boto3.resource('dynamodb')
-cognito = boto3.client('cognito-idp')
-table = dynamodb.Table(os.environ['DYNAMODB_TABLE'])
-
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Inicializar clientes de AWS con manejo de errores
+try:
+    dynamodb = boto3.resource('dynamodb')
+    cognito = boto3.client('cognito-idp')
+    logger.info("AWS clients initialized successfully")
+except Exception as e:
+    logger.error(f"Error initializing AWS clients: {str(e)}")
+    raise
+
+def get_table():
+    """Obtener la tabla de DynamoDB con manejo de errores"""
+    try:
+        table_name = os.environ.get('USERS_TABLE')
+        if not table_name:
+            logger.error("USERS_TABLE environment variable not found")
+            raise ValueError("USERS_TABLE environment variable is required")
+        
+        logger.info(f"Getting DynamoDB table: {table_name}")
+        return dynamodb.Table(table_name)
+    except Exception as e:
+        logger.error(f"Error getting DynamoDB table: {str(e)}")
+        raise
 
 def is_admin_user(event):
     try:
@@ -39,20 +59,20 @@ def is_admin_user(event):
                 
             print(f"Found username: {username}")
                 
-            # Verificar si el usuario pertenece al grupo Administrator
+            # Verificar si el usuario pertenece al grupo Administrators
             try:
                 groups_response = cognito.admin_list_groups_for_user(
                     Username=username,
-                    UserPoolId=os.environ['COGNITO_USER_POOL_ID']
+                    UserPoolId=os.environ['USER_POOL_ID']
                 )
                 print(f"User groups: {groups_response}")
                 
                 for group in groups_response['Groups']:
-                    if group['GroupName'] == 'Administrator':
-                        print("User is an administrator")
+                    if group['GroupName'] == 'Administrators':
+                        print("User is an Administrators")
                         return True
                         
-                print("User is not an administrator")
+                print("User is not an Administrators")
                 return False
             except cognito.exceptions.UserNotFoundException as e:
                 print(f"User not found in Cognito: {str(e)}")
@@ -80,9 +100,22 @@ def lambda_handler(event, context):
         logger.info(f"Incoming event: {event}")
         print("Event received:", json.dumps(event))
         
+        # Verificar que el evento sea válido
+        if not event:
+            logger.error("Empty event received")
+            return {
+                'statusCode': 400,
+                'body': json.dumps({
+                    'message': 'Invalid request',
+                    'error': 'Empty event received'
+                })
+            }
+        
         # Obtener el método HTTP y la ruta
         http_method = event.get('httpMethod', '')
         path = event.get('path', '')
+        
+        logger.info(f"Processing request: {http_method} {path}")
         
         # Remover el prefijo del entorno de la ruta si existe
         if path.startswith('/dev/'):
@@ -98,38 +131,60 @@ def lambda_handler(event, context):
         
         # Verificar permisos de administrador para operaciones sensibles
         if http_method in ['POST', 'PUT', 'DELETE']:
-            if not is_admin_user(event):
+            try:
+                if not is_admin_user(event):
+                    return {
+                        'statusCode': 403,
+                        'body': json.dumps({
+                            'message': 'Access denied',
+                            'details': 'Only Administrators can perform this operation'
+                        })
+                    }
+            except Exception as e:
+                logger.error(f"Error checking admin permissions: {str(e)}")
                 return {
-                    'statusCode': 403,
+                    'statusCode': 500,
                     'body': json.dumps({
-                        'message': 'Access denied',
-                        'details': 'Only administrators can perform this operation'
+                        'message': 'Internal server error',
+                        'error': 'Error checking permissions'
                     })
                 }
         
         # Manejar diferentes operaciones CRUD
-        if http_method == 'POST' and path == '/users':
-            return create_user(event)
-        elif http_method == 'GET' and path == '/users':
-            return get_users()
-        elif http_method == 'GET' and path.startswith('/users/'):
-            user_id = path.split('/')[-1]
-            return get_user(user_id)
-        elif http_method == 'PUT' and path.startswith('/users/'):
-            user_id = path.split('/')[-1]
-            return update_user(user_id, event)
-        elif http_method == 'DELETE' and path.startswith('/users/'):
-            user_id = path.split('/')[-1]
-            return delete_user(user_id)
-        else:
+        try:
+            if http_method == 'POST' and path == '/users':
+                return create_user(event)
+            elif http_method == 'GET' and path == '/users':
+                return get_users()
+            elif http_method == 'GET' and path.startswith('/users/'):
+                user_id = path.split('/')[-1]
+                return get_user(user_id)
+            elif http_method == 'PUT' and path.startswith('/users/'):
+                user_id = path.split('/')[-1]
+                return update_user(user_id, event)
+            elif http_method == 'DELETE' and path.startswith('/users/'):
+                user_id = path.split('/')[-1]
+                return delete_user(user_id)
+            else:
+                return {
+                    'statusCode': 400,
+                    'body': json.dumps({
+                        'message': 'Invalid request',
+                        'details': f'Method {http_method} not allowed for path {path}'
+                    })
+                }
+        except Exception as e:
+            logger.error(f"Error processing request: {str(e)}")
             return {
-                'statusCode': 400,
+                'statusCode': 500,
                 'body': json.dumps({
-                    'message': 'Invalid request',
-                    'details': f'Method {http_method} not allowed for path {path}'
+                    'message': 'Internal server error',
+                    'error': str(e)
                 })
             }
+            
     except Exception as e:
+        logger.error(f"Unhandled exception in lambda_handler: {str(e)}")
         print("Error:", str(e))
         return {
             'statusCode': 500,
@@ -142,7 +197,7 @@ def lambda_handler(event, context):
 def create_user(event):
     try:
         # Verificar variables de entorno requeridas
-        required_env_vars = ['COGNITO_USER_POOL_ID', 'DYNAMODB_TABLE']
+        required_env_vars = ['USER_POOL_ID', 'USERS_TABLE']
         missing_vars = [var for var in required_env_vars if not os.environ.get(var)]
         
         if missing_vars:
@@ -180,7 +235,7 @@ def create_user(event):
             }
         
         # Validar que el grupo sea válido
-        valid_groups = ['Doctors', 'CLients', 'Managers']
+        valid_groups = ['Doctors', 'Patients', 'Managers']
         if user_group not in valid_groups:
             return {
                 'statusCode': 400,
@@ -194,7 +249,7 @@ def create_user(event):
             # Crear usuario en Cognito
             print("Creating user in Cognito...")
             cognito_response = cognito.admin_create_user(
-                UserPoolId=os.environ['COGNITO_USER_POOL_ID'],
+                UserPoolId=os.environ['USER_POOL_ID'],
                 Username=email,
                 UserAttributes=[
                     {'Name': 'email', 'Value': email},
@@ -208,7 +263,7 @@ def create_user(event):
             # Establecer contraseña permanente
             print("Setting user password...")
             cognito.admin_set_user_password(
-                UserPoolId=os.environ['COGNITO_USER_POOL_ID'],
+                UserPoolId=os.environ['USER_POOL_ID'],
                 Username=email,
                 Password=password,
                 Permanent=True
@@ -222,14 +277,14 @@ def create_user(event):
                 try:
                     group_info = cognito.get_group(
                         GroupName=user_group,
-                        UserPoolId=os.environ['COGNITO_USER_POOL_ID']
+                        UserPoolId=os.environ['USER_POOL_ID']
                     )
                     print(f"Group info: {json.dumps(group_info, default=str)}")
                 except cognito.exceptions.ResourceNotFoundException:
                     print(f"Group {user_group} does not exist, creating it...")
                     cognito.create_group(
                         GroupName=user_group,
-                        UserPoolId=os.environ['COGNITO_USER_POOL_ID'],
+                        UserPoolId=os.environ['USER_POOL_ID'],
                         Description=f"Group for {user_group}"
                     )
                     print(f"Group {user_group} created successfully")
@@ -237,7 +292,7 @@ def create_user(event):
                 # Intentar agregar el usuario al grupo
                 try:
                     group_response = cognito.admin_add_user_to_group(
-                        UserPoolId=os.environ['COGNITO_USER_POOL_ID'],
+                        UserPoolId=os.environ['USER_POOL_ID'],
                         Username=email,
                         GroupName=user_group
                     )
@@ -256,7 +311,7 @@ def create_user(event):
                 try:
                     groups = cognito.admin_list_groups_for_user(
                         Username=email,
-                        UserPoolId=os.environ['COGNITO_USER_POOL_ID']
+                        UserPoolId=os.environ['USER_POOL_ID']
                     )
                     print(f"User groups after assignment: {json.dumps(groups, default=str)}")
                     
@@ -264,14 +319,14 @@ def create_user(event):
                         print(f"Warning: User was not successfully added to group {user_group}")
                         # Intentar agregar el usuario al grupo nuevamente
                         cognito.admin_add_user_to_group(
-                            UserPoolId=os.environ['COGNITO_USER_POOL_ID'],
+                            UserPoolId=os.environ['USER_POOL_ID'],
                             Username=email,
                             GroupName=user_group
                         )
                         # Verificar nuevamente
                         groups = cognito.admin_list_groups_for_user(
                             Username=email,
-                            UserPoolId=os.environ['COGNITO_USER_POOL_ID']
+                            UserPoolId=os.environ['USER_POOL_ID']
                         )
                         if not any(group['GroupName'] == user_group for group in groups['Groups']):
                             raise Exception(f"Failed to add user to group {user_group} after retry")
@@ -286,7 +341,7 @@ def create_user(event):
                 # Si falla la asignación del grupo, eliminar el usuario de Cognito
                 try:
                     cognito.admin_delete_user(
-                        UserPoolId=os.environ['COGNITO_USER_POOL_ID'],
+                        UserPoolId=os.environ['USER_POOL_ID'],
                         Username=email
                     )
                     print(f"User {email} deleted from Cognito due to group assignment failure")
@@ -294,15 +349,15 @@ def create_user(event):
                     print(f"Error deleting user after group assignment failure: {str(delete_error)}")
                 raise Exception(f"Failed to complete user creation: {str(e)}")
 
-            # Si el usuario es administrador, agregarlo también al grupo Administrator
+            # Si el usuario es administrador, agregarlo también al grupo Administrators
             if is_admin:
-                print("Adding user to Administrator group...")
+                print("Adding user to Administrators group...")
                 cognito.admin_add_user_to_group(
-                    UserPoolId=os.environ['COGNITO_USER_POOL_ID'],
+                    UserPoolId=os.environ['USER_POOL_ID'],
                     Username=email,
-                    GroupName='Administrator'
+                    GroupName='Administrators'
                 )
-                print("User added to Administrator group")
+                print("User added to Administrators group")
 
             # Crear usuario en DynamoDB
             print("Creating user in DynamoDB...")
@@ -323,7 +378,7 @@ def create_user(event):
             
             try:
                 # Verificar si el usuario ya existe en DynamoDB
-                existing_user = table.get_item(
+                existing_user = get_table().get_item(
                     Key={'id': user_id}
                 )
                 
@@ -338,14 +393,14 @@ def create_user(event):
                     }
                 
                 # Crear el usuario en DynamoDB
-                table.put_item(
+                get_table().put_item(
                     Item=item,
                     ConditionExpression='attribute_not_exists(id)'  # Asegurar que el ID no existe
                 )
                 print("DynamoDB user created successfully:", json.dumps(item, default=str))
                 
                 # Verificar que el usuario fue creado
-                verification = table.get_item(
+                verification = get_table().get_item(
                     Key={'id': user_id}
                 )
                 if 'Item' not in verification:
@@ -363,7 +418,7 @@ def create_user(event):
                 # Si falla la creación en DynamoDB, eliminar el usuario de Cognito
                 try:
                     cognito.admin_delete_user(
-                        UserPoolId=os.environ['COGNITO_USER_POOL_ID'],
+                        UserPoolId=os.environ['USER_POOL_ID'],
                         Username=email
                     )
                     print(f"User {email} deleted from Cognito due to DynamoDB creation failure")
@@ -400,7 +455,7 @@ def create_user(event):
 
 def get_users():
     try:
-        response = table.scan()
+        response = get_table().scan()
         return {
             'statusCode': 200,
             'body': json.dumps(response['Items'])
@@ -417,7 +472,7 @@ def get_users():
 
 def get_user(user_id):
     try:
-        response = table.get_item(Key={'id': user_id})
+        response = get_table().get_item(Key={'id': user_id})
         
         if 'Item' not in response:
             return {
@@ -447,7 +502,7 @@ def update_user(user_id, event):
         body = json.loads(event.get('body', '{}'))
         
         # Verificar si el usuario existe
-        response = table.get_item(Key={'id': user_id})
+        response = get_table().get_item(Key={'id': user_id})
         if 'Item' not in response:
             return {
                 'statusCode': 404,
@@ -469,7 +524,7 @@ def update_user(user_id, event):
                     attributes.append({'Name': 'name', 'Value': body['name']})
                 
                 cognito.admin_update_user_attributes(
-                    UserPoolId=os.environ['COGNITO_USER_POOL_ID'],
+                    UserPoolId=os.environ['USER_POOL_ID'],
                     Username=user['cognito_username'],
                     UserAttributes=attributes
                 )
@@ -487,18 +542,18 @@ def update_user(user_id, event):
         if 'is_admin' in body:
             try:
                 if body['is_admin']:
-                    # Agregar al grupo Administrator
+                    # Agregar al grupo Administrators
                     cognito.admin_add_user_to_group(
-                        UserPoolId=os.environ['COGNITO_USER_POOL_ID'],
+                        UserPoolId=os.environ['USER_POOL_ID'],
                         Username=user['cognito_username'],
-                        GroupName='Administrator'
+                        GroupName='Administrators'
                     )
                 else:
-                    # Remover del grupo Administrator
+                    # Remover del grupo Administrators
                     cognito.admin_remove_user_from_group(
-                        UserPoolId=os.environ['COGNITO_USER_POOL_ID'],
+                        UserPoolId=os.environ['USER_POOL_ID'],
                         Username=user['cognito_username'],
-                        GroupName='Administrator'
+                        GroupName='Administrators'
                     )
             except Exception as e:
                 print("Error updating user group:", str(e))
@@ -538,7 +593,7 @@ def update_user(user_id, event):
         update_expression += 'updated_at = :updated_at'
         expression_values[':updated_at'] = datetime.now().isoformat()
         
-        table.update_item(
+        get_table().update_item(
             Key={'id': user_id},
             UpdateExpression=update_expression,
             ExpressionAttributeValues=expression_values,
@@ -546,7 +601,7 @@ def update_user(user_id, event):
         )
         
         # Obtener el usuario actualizado
-        updated_user = table.get_item(Key={'id': user_id})['Item']
+        updated_user = get_table().get_item(Key={'id': user_id})['Item']
         
         return {
             'statusCode': 200,
@@ -568,7 +623,7 @@ def update_user(user_id, event):
 def delete_user(user_id):
     try:
         # Verificar si el usuario existe
-        response = table.get_item(Key={'id': user_id})
+        response = get_table().get_item(Key={'id': user_id})
         if 'Item' not in response:
             return {
                 'statusCode': 404,
@@ -583,12 +638,12 @@ def delete_user(user_id):
         try:
             # Eliminar usuario de Cognito
             cognito.admin_delete_user(
-                UserPoolId=os.environ['COGNITO_USER_POOL_ID'],
+                UserPoolId=os.environ['USER_POOL_ID'],
                 Username=user['cognito_username']
             )
             
             # Eliminar usuario de DynamoDB
-            table.delete_item(Key={'id': user_id})
+            get_table().delete_item(Key={'id': user_id})
             
             return {
                 'statusCode': 200,
