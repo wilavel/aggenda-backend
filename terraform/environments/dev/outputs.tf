@@ -8,6 +8,11 @@ output "dynamodb_table_name" {
   value       = module.dynamodb.table_name
 }
 
+output "ses_from_email" {
+  description = "SES FROM email used in Lambda"
+  value       = module.lambda.ses_from_email
+}
+
 output "lambda_function_name" {
   description = "Name of the Lambda function"
   value       = module.lambda.lambda_function_name

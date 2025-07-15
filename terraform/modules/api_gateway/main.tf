@@ -40,6 +40,13 @@ resource "aws_apigatewayv2_route" "get_users" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
 
+resource "aws_apigatewayv2_route" "send_json_email" {
+  api_id    = aws_apigatewayv2_api.users_api.id
+  route_key = "POST /send-json-email"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+  # Sin autenticación
+}
+
 resource "aws_apigatewayv2_route" "post_users" {
   api_id    = aws_apigatewayv2_api.users_api.id
   route_key = "POST /users"

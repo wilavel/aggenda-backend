@@ -56,4 +56,10 @@ variable "lambda_memory_size" {
   description = "Lambda memory size in MB"
   type        = number
   default     = 128
-} 
+}
+
+variable "ses_from_email" {
+  description = "Correo verificado en SES que se usará como remitente en la Lambda."
+  type        = string
+  default     = "wilavel@gmail.com"
+}

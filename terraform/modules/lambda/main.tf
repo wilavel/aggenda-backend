@@ -1,3 +1,22 @@
+resource "aws_iam_policy" "lambda_ses_policy" {
+  name        = "${var.environment}-lambda-ses-policy"
+  description = "IAM policy for Lambda to send emails via SES"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role" "lambda_role" {
   name = "${var.environment}-lambda-role"
 
@@ -96,6 +115,11 @@ resource "aws_iam_role_policy_attachment" "lambda_cognito_attachment" {
   policy_arn = aws_iam_policy.lambda_cognito_policy.arn
 }
 
+resource "aws_iam_role_policy_attachment" "lambda_ses_attachment" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.lambda_ses_policy.arn
+}
+
 resource "aws_iam_role_policy_attachment" "lambda_cloudwatch_attachment" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = aws_iam_policy.lambda_cloudwatch_policy.arn
@@ -116,6 +140,7 @@ resource "aws_lambda_function" "users_crud" {
       USERS_TABLE        = var.dynamodb_table_name
       ENVIRONMENT        = var.environment
       USER_POOL_ID       = var.cognito_user_pool_id
+      SES_FROM_EMAIL     = var.ses_from_email
     }
   }
 

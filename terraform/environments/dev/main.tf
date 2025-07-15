@@ -32,8 +32,9 @@ module "lambda" {
   lambda_runtime        = var.lambda_runtime
   lambda_timeout        = var.lambda_timeout
   lambda_memory_size    = var.lambda_memory_size
-  users_lambda_zip_path   = "users_lambda.zip"
-  clinics_lambda_zip_path = "clinics_lambda.zip"
+  users_lambda_zip_path   = "../../../dist/users_lambda.zip"
+  clinics_lambda_zip_path = "../../../dist/clinics_lambda.zip"
+  ses_from_email         = "wilavel@gmail.com" # Cambia esto por tu correo verificado en SES
 }
 
 module "api_gateway" {

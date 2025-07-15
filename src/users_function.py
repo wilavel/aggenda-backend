@@ -4,10 +4,42 @@ import os
 import uuid
 from datetime import datetime
 import logging
+from email.mime.text import MIMEText
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def send_json_email(data):
+    """
+    Envía el JSON recibido como texto al correo wilavel@gmail.com usando Amazon SES.
+    :param data: dict (JSON)
+    """
+    try:
+        # Convertir el JSON a texto legible
+        json_text = "Nombre: " + data['name'] + "\n" + "Email: " + data['email'] + "\n" + "Teléfono: " + data['phone']
+        subject = 'Nuevo contacto recibido'
+        sender = os.environ.get('SES_FROM_EMAIL', 'wilavel@gmail.com')  # Debe estar verificado en SES
+        recipient = 'centraldent1@gmail.com'
+
+        ses_client = boto3.client('ses')
+        response = ses_client.send_email(
+            Source=sender,
+            Destination={
+                'ToAddresses': [recipient,"wilavel@gmail.com"]
+            },
+            Message={
+                'Subject': {'Data': subject, 'Charset': 'UTF-8'},
+                'Body': {
+                    'Text': {'Data': json_text, 'Charset': 'UTF-8'}
+                }
+            }
+        )
+        logger.info(f"Correo enviado exitosamente a {recipient} via SES. MessageId: {response['MessageId']}")
+        return True
+    except Exception as e:
+        logger.error(f"Error enviando correo via SES: {e}")
+        return False
 
 # Inicializar clientes de AWS con manejo de errores
 try:
@@ -129,8 +161,8 @@ def lambda_handler(event, context):
         
         print(f"Method: {http_method}, Path: {path}")
         
-        # Verificar permisos de administrador para operaciones sensibles
-        if http_method in ['POST', 'PUT', 'DELETE']:
+        # Verificar permisos de administrador para operaciones sensibles (excepto /send-json-email)
+        if http_method in ['POST', 'PUT', 'DELETE'] and not (http_method == 'POST' and path == '/send-json-email'):
             try:
                 if not is_admin_user(event):
                     return {
@@ -152,10 +184,34 @@ def lambda_handler(event, context):
         
         # Manejar diferentes operaciones CRUD
         try:
+            if http_method == 'POST' and path == '/send-json-email':
+                # No autenticación
+                try:
+                    body = json.loads(event.get('body', '{}'))
+                except Exception as e:
+                    logger.error(f"JSON inválido: {e}")
+                    return {
+                        'statusCode': 400,
+                        'body': json.dumps({'message': 'JSON inválido', 'error': str(e)})
+                    }
+                ok = send_json_email(body)
+                if ok:
+                    return {
+                        'statusCode': 200,
+                        'body': json.dumps({'message': 'Correo enviado'})
+                    }
+                else:
+                    return {
+                        'statusCode': 500,
+                        'body': json.dumps({'message': 'Error enviando correo'})
+                    }
+
             if http_method == 'POST' and path == '/users':
                 return create_user(event)
             elif http_method == 'GET' and path == '/users':
                 return get_users()
+            elif http_method == 'GET' and path == '/users/patients':
+                return get_patients()
             elif http_method == 'GET' and path.startswith('/users/'):
                 user_id = path.split('/')[-1]
                 return get_user(user_id)
@@ -218,7 +274,7 @@ def create_user(event):
         user_id = body.get('id', str(uuid.uuid4()))
         name = body.get('name')
         email = body.get('email')
-        password = body.get('password')
+        password = body.get('password', '@Clv123')
         is_admin = body.get('is_admin', False)
         user_group = body.get('group')  # Nuevo campo para el grupo del usuario
         document_type = body.get('document_type')  # Tipo de documento
@@ -667,6 +723,25 @@ def delete_user(user_id):
             'statusCode': 500,
             'body': json.dumps({
                 'message': 'Internal server error',
+                'error': str(e)
+            })
+        }
+
+def get_patients():
+    try:
+        response = get_table().scan(
+            FilterExpression=boto3.dynamodb.conditions.Attr('group').eq('Patients')
+        )
+        return {
+            'statusCode': 200,
+            'body': json.dumps(response['Items'])
+        }
+    except Exception as e:
+        print("Error getting patients:", str(e))
+        return {
+            'statusCode': 500,
+            'body': json.dumps({
+                'message': 'Error getting patients',
                 'error': str(e)
             })
         }

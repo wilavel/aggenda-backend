@@ -51,6 +51,11 @@ variable "lambda_memory_size" {
   default     = 128
 }
 
+variable "ses_from_email" {
+  description = "Correo verificado en SES que se usará como remitente en la Lambda."
+  type        = string
+}
+
 variable "users_lambda_zip_path" {
   description = "Path to the users Lambda function ZIP file"
   type        = string
