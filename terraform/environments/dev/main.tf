@@ -44,4 +44,7 @@ module "api_gateway" {
   project_name         = var.project_name
   lambda_function_name = module.lambda.lambda_function_name
   lambda_invoke_arn    = module.lambda.lambda_invoke_arn
-} 
+  cognito_user_pool_id         = module.cognito.user_pool_id
+  cognito_user_pool_client_id  = module.cognito.client_id
+  clinics_lambda_invoke_arn    = module.lambda.clinics_lambda_invoke_arn
+}

@@ -16,4 +16,9 @@ output "lambda_function_arn" {
 output "lambda_invoke_arn" {
   description = "Invoke ARN of the Lambda function"
   value       = aws_lambda_function.users_crud.invoke_arn
-} 
+}
+
+output "clinics_lambda_invoke_arn" {
+  description = "Invoke ARN of the clinics_crud Lambda function"
+  value       = aws_lambda_function.clinics_crud.invoke_arn
+}

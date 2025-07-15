@@ -11,4 +11,4 @@ output "user_pool_arn" {
 output "client_id" {
   description = "ID of the Cognito User Pool Client"
   value       = aws_cognito_user_pool_client.users_client.id
-} 
+}
