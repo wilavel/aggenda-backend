@@ -16,13 +16,6 @@ output "clinics_table_arn" {
   value = aws_dynamodb_table.clinics_table.arn
 }
 
-output "user_clinics_table_name" {
-  value = aws_dynamodb_table.user_clinics_table.name
-}
-
-output "user_clinics_table_arn" {
-  value = aws_dynamodb_table.user_clinics_table.arn
-}
 
 output "appointments_table_name" {
   value = aws_dynamodb_table.appointments_table.name

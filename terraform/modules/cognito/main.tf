@@ -82,7 +82,7 @@ resource "aws_cognito_user_pool_client" "users_client" {
 
 resource "aws_cognito_user_group" "administrator_group" {
   user_pool_id = aws_cognito_user_pool.users_pool.id
-  name         = "Administrator"
+  name         = "Administrators"
   description  = "Grupo de administradores"
   precedence   = 1
 }

@@ -24,6 +24,11 @@ variable "clinics_lambda_invoke_arn" {
   type        = string
 }
 
+variable "clinics_lambda_function_name" {
+  description = "Name of the Lambda function for clinics"
+  type        = string
+}
+
 variable "cognito_user_pool_id" {
   description = "ID del Cognito User Pool para el JWT Authorizer"
   type        = string

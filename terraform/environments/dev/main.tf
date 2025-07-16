@@ -17,6 +17,7 @@ module "dynamodb" {
   environment   = var.environment
   project_name  = var.project_name
   billing_mode  = var.dynamodb_billing_mode
+  cognito_user_pool_arn = module.cognito.user_pool_arn
 }
 
 module "lambda" {
@@ -47,4 +48,5 @@ module "api_gateway" {
   cognito_user_pool_id         = module.cognito.user_pool_id
   cognito_user_pool_client_id  = module.cognito.client_id
   clinics_lambda_invoke_arn    = module.lambda.clinics_lambda_invoke_arn
+  clinics_lambda_function_name = "clinics-crud-${var.environment}"
 }

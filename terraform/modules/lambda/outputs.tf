@@ -22,3 +22,8 @@ output "clinics_lambda_invoke_arn" {
   description = "Invoke ARN of the clinics_crud Lambda function"
   value       = aws_lambda_function.clinics_crud.invoke_arn
 }
+
+output "lambda_kms_policy_arn" {
+  description = "ARN de la política de KMS para Lambda"
+  value       = aws_iam_policy.lambda_kms_policy.arn
+}

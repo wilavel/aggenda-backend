@@ -125,7 +125,35 @@ resource "aws_iam_role_policy_attachment" "lambda_cloudwatch_attachment" {
   policy_arn = aws_iam_policy.lambda_cloudwatch_policy.arn
 }
 
+
+resource "aws_iam_policy" "lambda_kms_policy" {
+  name        = "${var.environment}-lambda-kms-policy"
+  description = "Allow Lambda to use KMS key for env vars decryption"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "kms:Decrypt",
+          "kms:Encrypt",
+          "kms:DescribeKey"
+        ],
+        Resource = "arn:aws:kms:us-east-1:640168409035:key/f3f487ac-0df3-465d-947c-2d45c5272e1d"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_kms_attachment" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.lambda_kms_policy.arn
+}
+
+
 resource "aws_lambda_function" "users_crud" {
+
   filename         = var.users_lambda_zip_path
   source_code_hash = filebase64sha256(var.users_lambda_zip_path)
   function_name    = "users-crud-${var.environment}"
@@ -151,6 +179,7 @@ resource "aws_lambda_function" "users_crud" {
 }
 
 resource "aws_lambda_function" "clinics_crud" {
+
   filename         = var.clinics_lambda_zip_path
   source_code_hash = filebase64sha256(var.clinics_lambda_zip_path)
   function_name    = "clinics-crud-${var.environment}"

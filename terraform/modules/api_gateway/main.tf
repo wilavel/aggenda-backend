@@ -45,6 +45,15 @@ resource "aws_lambda_permission" "api_gw" {
   source_arn    = "${aws_apigatewayv2_api.users_api.execution_arn}/*/*"
 }
 
+resource "aws_lambda_permission" "clinics_api_gw" {
+  statement_id  = "AllowExecutionFromAPIGatewayClinics"
+  action        = "lambda:InvokeFunction"
+  function_name = var.clinics_lambda_function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.users_api.execution_arn}/*/*"
+}
+
+
 resource "aws_apigatewayv2_route" "get_users" {
   api_id    = aws_apigatewayv2_api.users_api.id
   route_key = "GET /users"
@@ -157,8 +166,52 @@ resource "aws_apigatewayv2_stage" "prod" {
   name   = var.environment
   auto_deploy = true
 
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.users_api.arn
+    format = jsonencode({
+      requestId       = "$context.requestId"
+      ip              = "$context.identity.sourceIp"
+      requestTime     = "$context.requestTime"
+      httpMethod      = "$context.httpMethod"
+      routeKey        = "$context.routeKey"
+      status          = "$context.status"
+      protocol        = "$context.protocol"
+      responseLength  = "$context.responseLength"
+      integrationErrorMessage = "$context.integrationErrorMessage"
+      authorizer      = "$context.authorizer.claims"
+    })
+  }
+
   tags = {
     Environment = var.environment
     Project     = var.project_name
   }
-} 
+}
+
+resource "aws_apigatewayv2_stage" "clinics_prod" {
+  api_id = aws_apigatewayv2_api.users_api.id
+  name   = "clinics-${var.environment}"
+  auto_deploy = true
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.clinics_api.arn
+    format = jsonencode({
+      requestId       = "$context.requestId"
+      ip              = "$context.identity.sourceIp"
+      requestTime     = "$context.requestTime"
+      httpMethod      = "$context.httpMethod"
+      routeKey        = "$context.routeKey"
+      status          = "$context.status"
+      protocol        = "$context.protocol"
+      responseLength  = "$context.responseLength"
+      integrationErrorMessage = "$context.integrationErrorMessage"
+      authorizer      = "$context.authorizer.claims"
+    })
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+ 
