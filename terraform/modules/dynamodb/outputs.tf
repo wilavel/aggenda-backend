@@ -22,5 +22,13 @@ output "appointments_table_name" {
 }
 
 output "appointments_table_arn" {
-  value = aws_dynamodb_table.appointments_table.arn
-} 
+  value       = aws_dynamodb_table.appointments_table.arn
+}
+
+output "user_clinic_adscription_table_name" {
+  value = aws_dynamodb_table.user_clinic_adscription.name
+}
+
+output "user_clinic_adscription_table_arn" {
+  value = aws_dynamodb_table.user_clinic_adscription.arn
+}
