@@ -25,8 +25,10 @@ module "lambda" {
 
   environment           = var.environment
   project_name          = var.project_name
-  dynamodb_table_name   = module.dynamodb.table_name
-  dynamodb_table_arn    = module.dynamodb.table_arn
+  users_table_name      = module.dynamodb.table_name
+  clinics_table_name    = module.dynamodb.clinics_table_name
+  users_table_arn       = module.dynamodb.table_arn
+  clinics_table_arn     = module.dynamodb.clinics_table_arn
   cognito_user_pool_id  = module.cognito.user_pool_id
   cognito_user_pool_arn = module.cognito.user_pool_arn
   lambda_zip_path       = var.lambda_zip_path
@@ -37,6 +39,7 @@ module "lambda" {
   clinics_lambda_zip_path = "../../../dist/clinics_lambda.zip"
   ses_from_email         = "wilavel@gmail.com" # Cambia esto por tu correo verificado en SES
 }
+
 
 module "api_gateway" {
   source = "../../modules/api_gateway"

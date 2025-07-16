@@ -55,7 +55,18 @@ resource "aws_iam_policy" "lambda_dynamodb_policy" {
           "dynamodb:Scan"
         ]
         Effect   = "Allow"
-        Resource = var.dynamodb_table_arn
+        Resource = var.users_table_arn
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:Scan"
+        ],
+        Resource = var.clinics_table_arn
       }
     ]
   })
@@ -165,7 +176,7 @@ resource "aws_lambda_function" "users_crud" {
 
   environment {
     variables = {
-      USERS_TABLE        = var.dynamodb_table_name
+      USERS_TABLE        = var.users_table_name
       ENVIRONMENT        = var.environment
       USER_POOL_ID       = var.cognito_user_pool_id
       SES_FROM_EMAIL     = var.ses_from_email
@@ -191,7 +202,7 @@ resource "aws_lambda_function" "clinics_crud" {
 
   environment {
     variables = {
-      CLINICS_TABLE      = var.dynamodb_table_name
+      CLINICS_TABLE      = var.clinics_table_name
       ENVIRONMENT        = var.environment
       USER_POOL_ID       = var.cognito_user_pool_id
     }
@@ -201,4 +212,4 @@ resource "aws_lambda_function" "clinics_crud" {
     Environment = var.environment
     Project     = var.project_name
   }
-} 
+}

@@ -18,10 +18,10 @@ logger = logging.getLogger(__name__)
 dynamodb = boto3.resource('dynamodb')
 cognito = boto3.client('cognito-idp')
 clinics_table = dynamodb.Table(os.environ['CLINICS_TABLE'])
-users_table = dynamodb.Table(os.environ['USERS_TABLE'])
+
 
 # Get environment variables
-USERS_TABLE = os.environ['USERS_TABLE']
+
 CLINICS_TABLE = os.environ['CLINICS_TABLE']
 USER_POOL_ID = os.environ['USER_POOL_ID']
 

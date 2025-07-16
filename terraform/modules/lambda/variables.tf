@@ -8,13 +8,23 @@ variable "project_name" {
   type        = string
 }
 
-variable "dynamodb_table_name" {
-  description = "Name of the DynamoDB table"
+variable "users_table_name" {
+  description = "Name of the DynamoDB table for users"
   type        = string
 }
 
-variable "dynamodb_table_arn" {
-  description = "ARN of the DynamoDB table"
+variable "clinics_table_name" {
+  description = "Name of the DynamoDB table for clinics"
+  type        = string
+}
+
+variable "users_table_arn" {
+  description = "ARN of the DynamoDB table for users"
+  type        = string
+}
+
+variable "clinics_table_arn" {
+  description = "ARN of the DynamoDB table for clinics"
   type        = string
 }
 
