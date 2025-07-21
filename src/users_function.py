@@ -279,6 +279,7 @@ def create_user(event):
         user_group = body.get('group')  # Nuevo campo para el grupo del usuario
         document_type = body.get('document_type')  # Tipo de documento
         document_number = body.get('document_number')  # Número de documento
+        clinics = body.get('clinics')
         print(f"User data - ID: {user_id}, Name: {name}, Email: {email}, Is Admin: {is_admin}, Group: {user_group}, Document Type: {document_type}, Document Number: {document_number}")
         
         if not all([name, email, password, user_group, document_type, document_number]):
@@ -429,7 +430,8 @@ def create_user(event):
                 'created_at': current_time,
                 'updated_at': current_time,
                 'document_type': document_type,  # Guardar tipo de documento
-                'document_number': document_number  # Guardar número de documento
+                'document_number': document_number,  # Guardar número de documento
+                'clinics': clinics  # Guardar clínicas asociadas al usuario
             }
             
             try:

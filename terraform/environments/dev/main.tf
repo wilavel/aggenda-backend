@@ -29,6 +29,7 @@ module "lambda" {
   clinics_table_name    = module.dynamodb.clinics_table_name
   users_table_arn       = module.dynamodb.table_arn
   clinics_table_arn     = module.dynamodb.clinics_table_arn
+  user_clinic_adscription_table_name = module.dynamodb.user_clinic_adscription_table_name
   cognito_user_pool_id  = module.cognito.user_pool_id
   cognito_user_pool_arn = module.cognito.user_pool_arn
   lambda_zip_path       = var.lambda_zip_path

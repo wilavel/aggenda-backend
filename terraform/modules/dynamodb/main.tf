@@ -24,31 +24,20 @@ resource "aws_dynamodb_table" "clinics_table" {
 resource "aws_dynamodb_table" "user_clinic_adscription" {
   name         = "user-clinic-adscription-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "user_id"
-  range_key    = "clinic_id"
+  hash_key     = "clinic_id"
+  range_key    = "user_id"
 
   attribute {
-    name = "user_id"
+    name = "clinic_id"
     type = "S"
   }
   attribute {
-    name = "clinic_id"
+    name = "user_id"
     type = "S"
   }
 
   tags = {
     Name        = "user-clinic-adscription-${var.environment}"
-    Environment = var.environment
-  }
-}
-
-  attribute {
-    name = "id"
-    type = "S"
-  }
-
-  tags = {
-    Name        = "services-api-${var.environment}"
     Environment = var.environment
   }
 }

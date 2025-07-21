@@ -177,6 +177,7 @@ resource "aws_lambda_function" "users_crud" {
   environment {
     variables = {
       USERS_TABLE        = var.users_table_name
+      USER_CLINIC_ADSCRIPTION_TABLE = var.user_clinic_adscription_table_name
       ENVIRONMENT        = var.environment
       USER_POOL_ID       = var.cognito_user_pool_id
       SES_FROM_EMAIL     = var.ses_from_email
@@ -203,6 +204,7 @@ resource "aws_lambda_function" "clinics_crud" {
   environment {
     variables = {
       CLINICS_TABLE      = var.clinics_table_name
+      USER_CLINIC_ADSCRIPTION_TABLE = var.user_clinic_adscription_table_name
       ENVIRONMENT        = var.environment
       USER_POOL_ID       = var.cognito_user_pool_id
     }

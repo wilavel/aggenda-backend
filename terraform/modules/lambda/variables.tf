@@ -28,6 +28,11 @@ variable "clinics_table_arn" {
   type        = string
 }
 
+variable "user_clinic_adscription_table_name" {
+  description = "Name of the DynamoDB table for user-clinic adscription"
+  type        = string
+}
+
 variable "cognito_user_pool_id" {
   description = "ID of the Cognito User Pool"
   type        = string
