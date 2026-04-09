@@ -43,6 +43,16 @@ output "clinics_lambda_function_name" {
   value       = aws_lambda_function.clinics_crud.function_name
 }
 
+output "availability_lambda_invoke_arn" {
+  description = "Invoke ARN of the availability_crud Lambda function"
+  value       = aws_lambda_function.availability_crud.invoke_arn
+}
+
+output "availability_lambda_function_name" {
+  description = "Name of the availability_crud Lambda function"
+  value       = aws_lambda_function.availability_crud.function_name
+}
+
 output "email_lambda_invoke_arn" {
   description = "Invoke ARN of the email_sender Lambda function"
   value       = aws_lambda_function.email_sender.invoke_arn

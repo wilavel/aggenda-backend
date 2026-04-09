@@ -192,6 +192,62 @@ resource "aws_lambda_permission" "whatsapp_api_gw" {
   source_arn    = "${aws_apigatewayv2_api.users_api.execution_arn}/*/*"
 }
 
+# ── Doctor Availability ───────────────────────────────────────────────────────
+resource "aws_apigatewayv2_integration" "availability_integration" {
+  api_id                 = aws_apigatewayv2_api.users_api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = var.availability_lambda_invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_lambda_permission" "availability_api_gw" {
+  statement_id  = "AllowExecutionFromAPIGatewayAvailability"
+  action        = "lambda:InvokeFunction"
+  function_name = var.availability_lambda_function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.users_api.execution_arn}/*/*"
+}
+
+resource "aws_apigatewayv2_route" "post_doctor_availability" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "POST /doctors/{doctor_id}/availability"
+  target             = "integrations/${aws_apigatewayv2_integration.availability_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "get_doctor_availability" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "GET /doctors/{doctor_id}/availability"
+  target             = "integrations/${aws_apigatewayv2_integration.availability_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "put_doctor_availability" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "PUT /doctors/{doctor_id}/availability/{slot_id}"
+  target             = "integrations/${aws_apigatewayv2_integration.availability_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "delete_doctor_availability" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "DELETE /doctors/{doctor_id}/availability/{slot_id}"
+  target             = "integrations/${aws_apigatewayv2_integration.availability_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "get_clinic_availability" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "GET /clinics/{clinic_id}/availability"
+  target             = "integrations/${aws_apigatewayv2_integration.availability_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
 # GET /whatsapp/webhook — verificación del webhook de Meta
 resource "aws_apigatewayv2_route" "whatsapp_verify" {
   api_id    = aws_apigatewayv2_api.users_api.id

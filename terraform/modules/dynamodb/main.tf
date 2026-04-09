@@ -63,34 +63,47 @@ resource "aws_dynamodb_table" "user_clinic_adscription" {
   }
 }
 
-resource "aws_dynamodb_table" "doctors_table" {
-  name           = "doctors-${var.environment}"
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "id"
+
+
+
+resource "aws_dynamodb_table" "doctor_availability" {
+  name         = "doctor-availability-${var.environment}"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "doctor_id"
+  range_key    = "slot_id"
 
   attribute {
-    name = "id"
+    name = "doctor_id"
     type = "S"
   }
 
   attribute {
-    name = "specialty"
+    name = "slot_id"
     type = "S"
+  }
+
+  attribute {
+    name = "clinic_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "day_of_week"
+    type = "N"
   }
 
   global_secondary_index {
-    name            = "SpecialtyIndex"
-    hash_key        = "specialty"
+    name            = "ClinicDayIndex"
+    hash_key        = "clinic_id"
+    range_key       = "day_of_week"
     projection_type = "ALL"
   }
 
   tags = {
-    Name        = "services-api-${var.environment}"
+    Name        = "doctor-availability-${var.environment}"
     Environment = var.environment
   }
 }
-
-
 
 resource "aws_dynamodb_table" "appointments_table" {
   name           = "appointments-${var.environment}"
@@ -158,11 +171,11 @@ resource "aws_iam_policy" "lambda_dynamodb_policy" {
         Resource = [
           aws_dynamodb_table.users_table.arn,
           "${aws_dynamodb_table.users_table.arn}/index/*",
-          aws_dynamodb_table.doctors_table.arn,
           aws_dynamodb_table.clinics_table.arn,
           aws_dynamodb_table.appointments_table.arn,
-          "${aws_dynamodb_table.doctors_table.arn}/index/*",
-          "${aws_dynamodb_table.appointments_table.arn}/index/*"
+          "${aws_dynamodb_table.appointments_table.arn}/index/*",
+          aws_dynamodb_table.doctor_availability.arn,
+          "${aws_dynamodb_table.doctor_availability.arn}/index/*"
         ]
       },
       {

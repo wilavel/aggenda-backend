@@ -215,6 +215,30 @@ resource "aws_lambda_function" "whatsapp_webhook" {
   }
 }
 
+resource "aws_lambda_function" "availability_crud" {
+  filename         = var.availability_lambda_zip_path
+  source_code_hash = filebase64sha256(var.availability_lambda_zip_path)
+  function_name    = "availability-crud-${var.environment}"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "availability_function.lambda_handler"
+  runtime          = var.lambda_runtime
+  timeout          = var.lambda_timeout
+  memory_size      = var.lambda_memory_size
+
+  environment {
+    variables = {
+      ENVIRONMENT        = var.environment
+      AVAILABILITY_TABLE = var.availability_table_name
+      USER_POOL_ID       = var.cognito_user_pool_id
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
 resource "aws_lambda_function" "email_sender" {
   filename         = var.email_lambda_zip_path
   source_code_hash = filebase64sha256(var.email_lambda_zip_path)

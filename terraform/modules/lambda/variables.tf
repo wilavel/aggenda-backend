@@ -112,3 +112,13 @@ variable "ses_to_email" {
   description = "Correo destinatario para los contactos recibidos vía /send-json-email"
   type        = string
 }
+
+variable "availability_lambda_zip_path" {
+  description = "Path to the doctor availability Lambda function ZIP file"
+  type        = string
+}
+
+variable "availability_table_name" {
+  description = "Name of the DynamoDB table for doctor availability"
+  type        = string
+}
