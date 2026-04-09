@@ -101,4 +101,14 @@ variable "whatsapp_api_token" {
 variable "whatsapp_phone_number_id" {
   description = "ID del número de teléfono de WhatsApp Business"
   type        = string
-} 
+}
+
+variable "email_lambda_zip_path" {
+  description = "Path to the email Lambda function ZIP file"
+  type        = string
+}
+
+variable "ses_to_email" {
+  description = "Correo destinatario para los contactos recibidos vía /send-json-email"
+  type        = string
+}

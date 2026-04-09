@@ -215,6 +215,30 @@ resource "aws_lambda_function" "whatsapp_webhook" {
   }
 }
 
+resource "aws_lambda_function" "email_sender" {
+  filename         = var.email_lambda_zip_path
+  source_code_hash = filebase64sha256(var.email_lambda_zip_path)
+  function_name    = "email-sender-${var.environment}"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "email_function.lambda_handler"
+  runtime          = var.lambda_runtime
+  timeout          = var.lambda_timeout
+  memory_size      = var.lambda_memory_size
+
+  environment {
+    variables = {
+      ENVIRONMENT    = var.environment
+      SES_FROM_EMAIL = var.ses_from_email
+      SES_TO_EMAIL   = var.ses_to_email
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
 resource "aws_lambda_function" "clinics_crud" {
 
   filename         = var.clinics_lambda_zip_path

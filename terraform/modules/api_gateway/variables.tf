@@ -48,3 +48,13 @@ variable "whatsapp_lambda_function_name" {
   description = "Name of the WhatsApp webhook Lambda function"
   type        = string
 }
+
+variable "email_lambda_invoke_arn" {
+  description = "Invoke ARN of the email_sender Lambda function"
+  type        = string
+}
+
+variable "email_lambda_function_name" {
+  description = "Name of the email_sender Lambda function"
+  type        = string
+}

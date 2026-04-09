@@ -9,6 +9,17 @@ resource "aws_dynamodb_table" "users_table" {
     type = "S"
   }
 
+  attribute {
+    name = "group"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "GroupIndex"
+    hash_key        = "group"
+    projection_type = "ALL"
+  }
+
   tags = {
     Name        = "services-api-${var.environment}"
     Environment = var.environment
@@ -146,6 +157,7 @@ resource "aws_iam_policy" "lambda_dynamodb_policy" {
         Effect   = "Allow"
         Resource = [
           aws_dynamodb_table.users_table.arn,
+          "${aws_dynamodb_table.users_table.arn}/index/*",
           aws_dynamodb_table.doctors_table.arn,
           aws_dynamodb_table.clinics_table.arn,
           aws_dynamodb_table.appointments_table.arn,

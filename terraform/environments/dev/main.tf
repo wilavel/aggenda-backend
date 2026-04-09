@@ -42,7 +42,9 @@ module "lambda" {
   users_lambda_zip_path    = "../../../dist/users_lambda.zip"
   clinics_lambda_zip_path  = "../../../dist/clinics_lambda.zip"
   whatsapp_lambda_zip_path = "../../../dist/get_ws_message_lambda.zip"
-  ses_from_email           = "wilavel@gmail.com" # Cambia esto por tu correo verificado en SES
+  email_lambda_zip_path    = "../../../dist/email_lambda.zip"
+  ses_from_email           = "wilavel@gmail.com"
+  ses_to_email             = "centraldent1@gmail.com"
 
   whatsapp_verify_token    = var.whatsapp_verify_token
   whatsapp_api_token       = var.whatsapp_api_token
@@ -63,4 +65,6 @@ module "api_gateway" {
   clinics_lambda_function_name  = module.lambda.clinics_lambda_function_name
   whatsapp_lambda_invoke_arn    = module.lambda.whatsapp_lambda_invoke_arn
   whatsapp_lambda_function_name = module.lambda.whatsapp_lambda_function_name
+  email_lambda_invoke_arn       = module.lambda.email_lambda_invoke_arn
+  email_lambda_function_name    = module.lambda.email_lambda_function_name
 }

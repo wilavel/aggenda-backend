@@ -28,13 +28,13 @@ resource "aws_apigatewayv2_authorizer" "jwt" {
 }
 
 resource "aws_apigatewayv2_integration" "lambda_integration" {
-  api_id           = aws_apigatewayv2_api.users_api.id
-  integration_type = "AWS_PROXY"
-
-  connection_type    = "INTERNET"
-  description        = "Lambda integration"
-  integration_method = "POST"
-  integration_uri    = var.lambda_invoke_arn
+  api_id                 = aws_apigatewayv2_api.users_api.id
+  integration_type       = "AWS_PROXY"
+  connection_type        = "INTERNET"
+  description            = "Lambda integration"
+  integration_method     = "POST"
+  integration_uri        = var.lambda_invoke_arn
+  payload_format_version = "2.0"
 }
 
 resource "aws_lambda_permission" "api_gw" {
@@ -60,11 +60,26 @@ resource "aws_apigatewayv2_route" "get_users" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
 
+# Email Lambda integration and route (no authentication required)
+resource "aws_apigatewayv2_integration" "email_integration" {
+  api_id                 = aws_apigatewayv2_api.users_api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = var.email_lambda_invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_lambda_permission" "email_api_gw" {
+  statement_id  = "AllowExecutionFromAPIGatewayEmail"
+  action        = "lambda:InvokeFunction"
+  function_name = var.email_lambda_function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.users_api.execution_arn}/*/*"
+}
+
 resource "aws_apigatewayv2_route" "send_json_email" {
   api_id    = aws_apigatewayv2_api.users_api.id
   route_key = "POST /send-json-email"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
-  # Sin autenticación
+  target    = "integrations/${aws_apigatewayv2_integration.email_integration.id}"
 }
 
 
