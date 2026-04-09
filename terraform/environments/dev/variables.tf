@@ -58,8 +58,37 @@ variable "lambda_memory_size" {
   default     = 128
 }
 
+variable "cognito_existing_user_pool_id" {
+  description = "ID del User Pool de Cognito existente"
+  type        = string
+  default     = "us-east-1_EW4rM5Uqx"
+}
+
+variable "cognito_existing_client_id" {
+  description = "ID del cliente del User Pool de Cognito existente"
+  type        = string
+  default     = "4fh5p076l7bb0th9p4uc9bd10u"
+}
+
 variable "ses_from_email" {
   description = "Correo verificado en SES que se usará como remitente en la Lambda."
   type        = string
   default     = "wilavel@gmail.com"
+}
+
+variable "whatsapp_verify_token" {
+  description = "Token secreto para verificar el webhook de WhatsApp (lo defines tú en Meta Developer)"
+  type        = string
+  sensitive   = true
+}
+
+variable "whatsapp_api_token" {
+  description = "Token de acceso permanente de la API de WhatsApp Business"
+  type        = string
+  sensitive   = true
+}
+
+variable "whatsapp_phone_number_id" {
+  description = "ID del número de teléfono en WhatsApp Business (Meta Developer Console)"
+  type        = string
 }

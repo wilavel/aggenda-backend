@@ -161,6 +161,36 @@ resource "aws_apigatewayv2_integration" "clinics_integration" {
 }
 
 
+# WhatsApp Webhook Integration (sin autenticación)
+resource "aws_apigatewayv2_integration" "whatsapp_integration" {
+  api_id                 = aws_apigatewayv2_api.users_api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = var.whatsapp_lambda_invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_lambda_permission" "whatsapp_api_gw" {
+  statement_id  = "AllowExecutionFromAPIGatewayWhatsApp"
+  action        = "lambda:InvokeFunction"
+  function_name = var.whatsapp_lambda_function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.users_api.execution_arn}/*/*"
+}
+
+# GET /whatsapp/webhook — verificación del webhook de Meta
+resource "aws_apigatewayv2_route" "whatsapp_verify" {
+  api_id    = aws_apigatewayv2_api.users_api.id
+  route_key = "GET /whatsapp/webhook"
+  target    = "integrations/${aws_apigatewayv2_integration.whatsapp_integration.id}"
+}
+
+# POST /whatsapp/webhook — recepción de mensajes de Meta
+resource "aws_apigatewayv2_route" "whatsapp_messages" {
+  api_id    = aws_apigatewayv2_api.users_api.id
+  route_key = "POST /whatsapp/webhook"
+  target    = "integrations/${aws_apigatewayv2_integration.whatsapp_integration.id}"
+}
+
 resource "aws_apigatewayv2_stage" "prod" {
   api_id = aws_apigatewayv2_api.users_api.id
   name   = var.environment

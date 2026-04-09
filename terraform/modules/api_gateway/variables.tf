@@ -38,3 +38,13 @@ variable "cognito_user_pool_client_id" {
   description = "ID del Cognito User Pool Client para el JWT Authorizer"
   type        = string
 }
+
+variable "whatsapp_lambda_invoke_arn" {
+  description = "Invoke ARN of the WhatsApp webhook Lambda function"
+  type        = string
+}
+
+variable "whatsapp_lambda_function_name" {
+  description = "Name of the WhatsApp webhook Lambda function"
+  type        = string
+}

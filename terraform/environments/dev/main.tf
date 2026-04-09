@@ -1,14 +1,17 @@
 provider "aws" {
-  region = var.aws_region
+  region  = var.aws_region
+  profile = "agendawa"
 }
 
 module "cognito" {
   source = "../../modules/cognito"
 
-  environment    = var.environment
-  project_name   = var.project_name
-  callback_urls  = var.cognito_callback_urls
-  logout_urls    = var.cognito_logout_urls
+  environment           = var.environment
+  project_name          = var.project_name
+  callback_urls         = var.cognito_callback_urls
+  logout_urls           = var.cognito_logout_urls
+  existing_user_pool_id = var.cognito_existing_user_pool_id
+  existing_client_id    = var.cognito_existing_client_id
 }
 
 module "dynamodb" {
@@ -36,9 +39,14 @@ module "lambda" {
   lambda_runtime        = var.lambda_runtime
   lambda_timeout        = var.lambda_timeout
   lambda_memory_size    = var.lambda_memory_size
-  users_lambda_zip_path   = "../../../dist/users_lambda.zip"
-  clinics_lambda_zip_path = "../../../dist/clinics_lambda.zip"
-  ses_from_email         = "wilavel@gmail.com" # Cambia esto por tu correo verificado en SES
+  users_lambda_zip_path    = "../../../dist/users_lambda.zip"
+  clinics_lambda_zip_path  = "../../../dist/clinics_lambda.zip"
+  whatsapp_lambda_zip_path = "../../../dist/get_ws_message_lambda.zip"
+  ses_from_email           = "wilavel@gmail.com" # Cambia esto por tu correo verificado en SES
+
+  whatsapp_verify_token    = var.whatsapp_verify_token
+  whatsapp_api_token       = var.whatsapp_api_token
+  whatsapp_phone_number_id = var.whatsapp_phone_number_id
 }
 
 
@@ -51,6 +59,8 @@ module "api_gateway" {
   lambda_invoke_arn    = module.lambda.lambda_invoke_arn
   cognito_user_pool_id         = module.cognito.user_pool_id
   cognito_user_pool_client_id  = module.cognito.client_id
-  clinics_lambda_invoke_arn    = module.lambda.clinics_lambda_invoke_arn
-  clinics_lambda_function_name = "clinics-crud-${var.environment}"
+  clinics_lambda_invoke_arn     = module.lambda.clinics_lambda_invoke_arn
+  clinics_lambda_function_name  = module.lambda.clinics_lambda_function_name
+  whatsapp_lambda_invoke_arn    = module.lambda.whatsapp_lambda_invoke_arn
+  whatsapp_lambda_function_name = module.lambda.whatsapp_lambda_function_name
 }

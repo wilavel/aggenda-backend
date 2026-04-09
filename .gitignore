@@ -4,6 +4,10 @@
 *.tfstate.*
 .terraform.lock.hcl
 
+# Variables con secretos (tokens, contraseñas) - NO subir al repositorio
+*.tfvars
+!*.tfvars.example
+
 # Archivos ZIP de Lambda
 dist/
 *.zip

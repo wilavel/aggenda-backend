@@ -190,6 +190,31 @@ resource "aws_lambda_function" "users_crud" {
   }
 }
 
+resource "aws_lambda_function" "whatsapp_webhook" {
+  filename         = var.whatsapp_lambda_zip_path
+  source_code_hash = filebase64sha256(var.whatsapp_lambda_zip_path)
+  function_name    = "whatsapp-webhook-${var.environment}"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "get_ws_message.lambda_handler"
+  runtime          = var.lambda_runtime
+  timeout          = var.lambda_timeout
+  memory_size      = var.lambda_memory_size
+
+  environment {
+    variables = {
+      ENVIRONMENT              = var.environment
+      WHATSAPP_VERIFY_TOKEN    = var.whatsapp_verify_token
+      WHATSAPP_API_TOKEN       = var.whatsapp_api_token
+      WHATSAPP_PHONE_NUMBER_ID = var.whatsapp_phone_number_id
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
 resource "aws_lambda_function" "clinics_crud" {
 
   filename         = var.clinics_lambda_zip_path

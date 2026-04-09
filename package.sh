@@ -21,4 +21,14 @@ if [ -d libs ]; then mkdir -p temp_package/libs && cp -r libs/* temp_package/lib
 cd temp_package && zip -r ../dist/clinics_lambda.zip . && cd ..
 rm -rf temp_package
 
-echo "dist/clinics_lambda.zip empaquetado correctamente." 
+echo "dist/clinics_lambda.zip empaquetado correctamente."
+
+# Empaquetar get_ws_message_lambda.zip
+rm -f dist/get_ws_message_lambda.zip && rm -rf temp_package
+mkdir -p temp_package
+cp src/get_ws_message.py temp_package/
+if [ -d libs ]; then mkdir -p temp_package/libs && cp -r libs/* temp_package/libs/; fi
+cd temp_package && zip -r ../dist/get_ws_message_lambda.zip . && cd ..
+rm -rf temp_package
+
+echo "dist/get_ws_message_lambda.zip empaquetado correctamente." 

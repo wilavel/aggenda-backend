@@ -79,4 +79,26 @@ variable "users_lambda_zip_path" {
 variable "clinics_lambda_zip_path" {
   description = "Path to the clinics Lambda function ZIP file"
   type        = string
+}
+
+variable "whatsapp_lambda_zip_path" {
+  description = "Path to the WhatsApp webhook Lambda function ZIP file"
+  type        = string
+}
+
+variable "whatsapp_verify_token" {
+  description = "Token secreto para verificar el webhook de WhatsApp"
+  type        = string
+  sensitive   = true
+}
+
+variable "whatsapp_api_token" {
+  description = "Token de acceso a la API de WhatsApp Business"
+  type        = string
+  sensitive   = true
+}
+
+variable "whatsapp_phone_number_id" {
+  description = "ID del número de teléfono de WhatsApp Business"
+  type        = string
 } 
