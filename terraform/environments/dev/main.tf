@@ -47,6 +47,7 @@ module "lambda" {
   ses_from_email               = "wilavel@gmail.com"
   ses_to_email                 = "centraldent1@gmail.com"
   availability_table_name      = module.dynamodb.doctor_availability_table_name
+  availability_table_arn       = module.dynamodb.doctor_availability_table_arn
 
   whatsapp_verify_token    = var.whatsapp_verify_token
   whatsapp_api_token       = var.whatsapp_api_token

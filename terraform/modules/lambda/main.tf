@@ -47,26 +47,23 @@ resource "aws_iam_policy" "lambda_dynamodb_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+        Effect = "Allow"
         Action = [
           "dynamodb:GetItem",
           "dynamodb:PutItem",
           "dynamodb:UpdateItem",
           "dynamodb:DeleteItem",
-          "dynamodb:Scan"
+          "dynamodb:Scan",
+          "dynamodb:Query"
         ]
-        Effect   = "Allow"
-        Resource = var.users_table_arn
-      },
-      {
-        Effect = "Allow",
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:DeleteItem",
-          "dynamodb:Scan"
-        ],
-        Resource = var.clinics_table_arn
+        Resource = [
+          var.users_table_arn,
+          "${var.users_table_arn}/index/*",
+          var.clinics_table_arn,
+          "${var.clinics_table_arn}/index/*",
+          var.availability_table_arn,
+          "${var.availability_table_arn}/index/*"
+        ]
       }
     ]
   })

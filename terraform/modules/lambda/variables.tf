@@ -122,3 +122,8 @@ variable "availability_table_name" {
   description = "Name of the DynamoDB table for doctor availability"
   type        = string
 }
+
+variable "availability_table_arn" {
+  description = "ARN of the DynamoDB table for doctor availability"
+  type        = string
+}
