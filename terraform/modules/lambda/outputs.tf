@@ -62,3 +62,13 @@ output "email_lambda_function_name" {
   description = "Name of the email_sender Lambda function"
   value       = aws_lambda_function.email_sender.function_name
 }
+
+output "appointments_lambda_invoke_arn" {
+  description = "Invoke ARN of the appointments_crud Lambda function"
+  value       = aws_lambda_function.appointments_crud.invoke_arn
+}
+
+output "appointments_lambda_function_name" {
+  description = "Name of the appointments_crud Lambda function"
+  value       = aws_lambda_function.appointments_crud.function_name
+}

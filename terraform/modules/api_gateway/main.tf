@@ -248,6 +248,62 @@ resource "aws_apigatewayv2_route" "get_clinic_availability" {
   authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
 }
 
+# ── Appointments ──────────────────────────────────────────────────────────────
+resource "aws_apigatewayv2_integration" "appointments_integration" {
+  api_id                 = aws_apigatewayv2_api.users_api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = var.appointments_lambda_invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_lambda_permission" "appointments_api_gw" {
+  statement_id  = "AllowExecutionFromAPIGatewayAppointments"
+  action        = "lambda:InvokeFunction"
+  function_name = var.appointments_lambda_function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.users_api.execution_arn}/*/*"
+}
+
+resource "aws_apigatewayv2_route" "post_appointments" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "POST /appointments"
+  target             = "integrations/${aws_apigatewayv2_integration.appointments_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "get_appointment" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "GET /appointments/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.appointments_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "delete_appointment" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "DELETE /appointments/{id}"
+  target             = "integrations/${aws_apigatewayv2_integration.appointments_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "get_doctor_appointments" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "GET /doctors/{doctor_id}/appointments"
+  target             = "integrations/${aws_apigatewayv2_integration.appointments_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "get_patient_appointments" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "GET /patients/{patient_id}/appointments"
+  target             = "integrations/${aws_apigatewayv2_integration.appointments_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
 # GET /whatsapp/webhook — verificación del webhook de Meta
 resource "aws_apigatewayv2_route" "whatsapp_verify" {
   api_id    = aws_apigatewayv2_api.users_api.id

@@ -68,3 +68,13 @@ variable "availability_lambda_function_name" {
   description = "Name of the availability_crud Lambda function"
   type        = string
 }
+
+variable "appointments_lambda_invoke_arn" {
+  description = "Invoke ARN of the appointments_crud Lambda function"
+  type        = string
+}
+
+variable "appointments_lambda_function_name" {
+  description = "Name of the appointments_crud Lambda function"
+  type        = string
+}

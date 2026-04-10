@@ -1,5 +1,8 @@
 import json
 import os
+import re
+import secrets
+import string
 import uuid
 from datetime import datetime
 import logging
@@ -14,8 +17,10 @@ logger = logging.getLogger(__name__)
 
 dynamodb = boto3.resource('dynamodb')
 cognito = boto3.client('cognito-idp')
+ses = boto3.client('ses', region_name='us-east-1')
 
 VALID_GROUPS = ('Doctors', 'Patients', 'Managers')
+EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$')
 
 
 def _table():
@@ -115,22 +120,27 @@ def create_user(event):
     try:
         body = json.loads(event.get('body', '{}'))
         user_id = body.get('id', str(uuid.uuid4()))
-        name = body.get('name')
-        email = body.get('email')
-        password = body.get('password')
+        name = body.get('name', '').strip()
+        email = body.get('email', '').strip().lower()
         is_admin = body.get('is_admin', False)
         user_group = body.get('group')
         document_type = body.get('document_type')
         document_number = body.get('document_number')
         clinics = body.get('clinics')
 
-        if not all([name, email, password, user_group, document_type, document_number]):
+        if not all([name, email, user_group, document_type, document_number]):
             return err('Missing required fields', 400,
-                       required_fields=['name', 'email', 'password', 'group',
+                       required_fields=['name', 'email', 'group',
                                         'document_type', 'document_number'])
+
+        if not EMAIL_REGEX.match(email):
+            return err('El correo electrónico no tiene un formato válido', 400)
 
         if user_group not in VALID_GROUPS:
             return err(f'Invalid group. Must be one of: {", ".join(VALID_GROUPS)}', 400)
+
+        # Generate a secure temporary password
+        temp_password = _generate_password()
 
         pool_id = os.environ['USER_POOL_ID']
 
@@ -147,10 +157,10 @@ def create_user(event):
                 MessageAction='SUPPRESS',
             )
             cognito.admin_set_user_password(
-                UserPoolId=pool_id, Username=email, Password=password, Permanent=True
+                UserPoolId=pool_id, Username=email, Password=temp_password, Permanent=True
             )
         except cognito.exceptions.UsernameExistsException:
-            return err('A user with this email already exists', 400)
+            return err('Ya existe un usuario con este correo electrónico', 400)
 
         # Assign group — rollback Cognito on failure
         try:
@@ -190,8 +200,28 @@ def create_user(event):
             _delete_cognito_user(pool_id, email)
             return err('Error saving user to database')
 
+        # Send welcome email with temporary password — non-blocking
+        email_sent = False
+        try:
+            _send_welcome_email(email, name, temp_password)
+            email_sent = True
+            logger.info(f"Welcome email sent to {email}")
+        except Exception as exc:
+            logger.error(f"Failed to send welcome email to {email}: {exc}")
+
+        message = (
+            'Usuario creado exitosamente. Se envió la contraseña temporal al correo.'
+            if email_sent
+            else 'Usuario creado exitosamente. No se pudo enviar el correo automático — comparte la contraseña temporal manualmente.'
+        )
+
         logger.info(f"Created user {user_id}")
-        return ok({'message': 'User created successfully', 'user': item}, 201)
+        return ok({
+            'message': message,
+            'email_sent': email_sent,
+            'temp_password': temp_password,
+            'user': item,
+        }, 201)
 
     except Exception as exc:
         logger.error(f"Error creating user: {exc}")
@@ -301,3 +331,96 @@ def _delete_cognito_user(pool_id, email):
         cognito.admin_delete_user(UserPoolId=pool_id, Username=email)
     except Exception as exc:
         logger.error(f"Failed to delete Cognito user {email} during rollback: {exc}")
+
+
+def _generate_password(length=12):
+    """Generate a secure temporary password that satisfies Cognito requirements."""
+    alphabet = string.ascii_letters + string.digits + '!@#$%^&*'
+    while True:
+        pwd = ''.join(secrets.choice(alphabet) for _ in range(length))
+        # Cognito requires: uppercase, lowercase, digit, special char
+        if (any(c.isupper() for c in pwd)
+                and any(c.islower() for c in pwd)
+                and any(c.isdigit() for c in pwd)
+                and any(c in '!@#$%^&*' for c in pwd)):
+            return pwd
+
+
+def _send_welcome_email(to_email, name, temp_password):
+    """Send a welcome email with the temporary password via SES."""
+    from_email = os.environ.get('SES_FROM_EMAIL', '')
+
+    GROUP_LABELS = {'Doctors': 'Doctor', 'Patients': 'Paciente', 'Managers': 'Gerente'}
+
+    subject = 'Bienvenido a la plataforma de agenda médica — tus credenciales de acceso'
+
+    html_body = f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body {{ font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 0; }}
+        .container {{ max-width: 520px; margin: 40px auto; background: #ffffff;
+                     border-radius: 8px; overflow: hidden;
+                     box-shadow: 0 2px 8px rgba(0,0,0,0.1); }}
+        .header {{ background: #1976d2; padding: 28px 32px; color: #ffffff; }}
+        .header h1 {{ margin: 0; font-size: 22px; }}
+        .body {{ padding: 28px 32px; color: #333333; }}
+        .body p {{ line-height: 1.6; margin: 0 0 16px; }}
+        .credentials {{ background: #f0f4ff; border: 1px solid #c5d3f5;
+                        border-radius: 6px; padding: 16px 20px; margin: 20px 0; }}
+        .credentials p {{ margin: 6px 0; font-size: 15px; }}
+        .credentials strong {{ color: #1565c0; }}
+        .password {{ font-size: 20px; font-weight: bold; letter-spacing: 2px;
+                     color: #1a237e; background: #e8eaf6; padding: 6px 12px;
+                     border-radius: 4px; display: inline-block; margin-top: 4px; }}
+        .warning {{ color: #e65100; font-size: 13px; margin-top: 12px; }}
+        .footer {{ background: #f4f6f8; padding: 16px 32px;
+                   font-size: 12px; color: #888; text-align: center; }}
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Agenda Médica</h1>
+          <p style="margin:6px 0 0;font-size:14px;opacity:0.9">Bienvenido/a a la plataforma</p>
+        </div>
+        <div class="body">
+          <p>Hola <strong>{name}</strong>,</p>
+          <p>Tu cuenta ha sido creada exitosamente. A continuación encontrarás tus credenciales de acceso:</p>
+          <div class="credentials">
+            <p>📧 <strong>Correo:</strong> {to_email}</p>
+            <p>🔑 <strong>Contraseña temporal:</strong></p>
+            <span class="password">{temp_password}</span>
+          </div>
+          <p class="warning">⚠️ Por seguridad, te recomendamos cambiar esta contraseña la primera vez que inicies sesión.</p>
+          <p>Si tienes algún inconveniente para acceder, comunícate con el administrador de la plataforma.</p>
+        </div>
+        <div class="footer">
+          Este correo fue generado automáticamente. Por favor no respondas a este mensaje.
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+
+    text_body = (
+        f"Bienvenido/a {name},\n\n"
+        f"Tu cuenta ha sido creada.\n"
+        f"Correo: {to_email}\n"
+        f"Contraseña temporal: {temp_password}\n\n"
+        f"Por seguridad, cambia tu contraseña al iniciar sesión por primera vez."
+    )
+
+    ses.send_email(
+        Source=from_email,
+        Destination={'ToAddresses': [to_email]},
+        Message={
+            'Subject': {'Data': subject, 'Charset': 'UTF-8'},
+            'Body': {
+                'Text': {'Data': text_body, 'Charset': 'UTF-8'},
+                'Html': {'Data': html_body, 'Charset': 'UTF-8'},
+            },
+        },
+    )

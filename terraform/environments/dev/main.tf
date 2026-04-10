@@ -48,6 +48,9 @@ module "lambda" {
   ses_to_email                 = "centraldent1@gmail.com"
   availability_table_name      = module.dynamodb.doctor_availability_table_name
   availability_table_arn       = module.dynamodb.doctor_availability_table_arn
+  appointments_lambda_zip_path = "../../../dist/appointments_lambda.zip"
+  appointments_table_name      = module.dynamodb.appointments_table_name
+  appointments_table_arn       = module.dynamodb.appointments_table_arn
 
   whatsapp_verify_token    = var.whatsapp_verify_token
   whatsapp_api_token       = var.whatsapp_api_token
@@ -72,4 +75,6 @@ module "api_gateway" {
   email_lambda_function_name         = module.lambda.email_lambda_function_name
   availability_lambda_invoke_arn     = module.lambda.availability_lambda_invoke_arn
   availability_lambda_function_name  = module.lambda.availability_lambda_function_name
+  appointments_lambda_invoke_arn     = module.lambda.appointments_lambda_invoke_arn
+  appointments_lambda_function_name  = module.lambda.appointments_lambda_function_name
 }

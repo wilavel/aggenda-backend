@@ -62,7 +62,9 @@ resource "aws_iam_policy" "lambda_dynamodb_policy" {
           var.clinics_table_arn,
           "${var.clinics_table_arn}/index/*",
           var.availability_table_arn,
-          "${var.availability_table_arn}/index/*"
+          "${var.availability_table_arn}/index/*",
+          var.appointments_table_arn,
+          "${var.appointments_table_arn}/index/*"
         ]
       }
     ]
@@ -83,7 +85,10 @@ resource "aws_iam_policy" "lambda_cognito_policy" {
           "cognito-idp:AdminUpdateUserAttributes",
           "cognito-idp:AdminDeleteUser",
           "cognito-idp:AdminListGroupsForUser",
+          "cognito-idp:AdminRemoveUserFromGroup",
           "cognito-idp:GetGroup",
+          "cognito-idp:ListGroups",
+          "cognito-idp:CreateGroup",
           "cognito-idp:AdminAddUserToGroup"
         ]
         Effect   = "Allow"
@@ -251,6 +256,31 @@ resource "aws_lambda_function" "email_sender" {
       ENVIRONMENT    = var.environment
       SES_FROM_EMAIL = var.ses_from_email
       SES_TO_EMAIL   = var.ses_to_email
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+resource "aws_lambda_function" "appointments_crud" {
+  filename         = var.appointments_lambda_zip_path
+  source_code_hash = filebase64sha256(var.appointments_lambda_zip_path)
+  function_name    = "appointments-crud-${var.environment}"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "appointments_function.lambda_handler"
+  runtime          = var.lambda_runtime
+  timeout          = var.lambda_timeout
+  memory_size      = var.lambda_memory_size
+
+  environment {
+    variables = {
+      ENVIRONMENT        = var.environment
+      APPOINTMENTS_TABLE = var.appointments_table_name
+      AVAILABILITY_TABLE = var.availability_table_name
+      USER_POOL_ID       = var.cognito_user_pool_id
     }
   }
 
