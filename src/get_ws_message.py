@@ -1,6 +1,7 @@
 import json
 import os
 import logging
+import tempfile
 import urllib.request
 
 logger = logging.getLogger()
@@ -91,7 +92,13 @@ def process_message(message, value):
 
     elif msg_type == "audio":
         audio = message.get("audio", {})
-        logger.info(f"Audio recibido: {audio.get('id')}")
+        media_id = audio.get("id")
+        audio_url = audio.get("url")
+        logger.info(f"Audio recibido: {media_id}")
+        transcript = transcribe_whatsapp_audio(media_id, audio_url)
+        if transcript:
+            print(f"[Transcripción] {transcript}")
+            logger.info(f"Transcripción del audio: {transcript}")
 
     elif msg_type == "interactive":
         interactive = message.get("interactive", {})
@@ -99,6 +106,61 @@ def process_message(message, value):
 
     else:
         logger.info(f"Tipo de mensaje no manejado: {msg_type}")
+
+
+def transcribe_whatsapp_audio(media_id: str, audio_url: str | None = None) -> str | None:
+    """
+    Descarga el audio de WhatsApp y lo transcribe con faster-whisper.
+    Usa la URL del webhook si está disponible, sino la obtiene de la API de Meta.
+    """
+    api_token = os.environ.get("WHATSAPP_API_TOKEN")
+    if not api_token:
+        logger.error("Falta variable de entorno WHATSAPP_API_TOKEN")
+        return None
+
+    # Paso 1: obtener la URL de descarga
+    if not audio_url:
+        meta_url = f"https://graph.facebook.com/v19.0/{media_id}"
+        req = urllib.request.Request(meta_url, headers={"Authorization": f"Bearer {api_token}"})
+        try:
+            with urllib.request.urlopen(req) as resp:
+                audio_url = json.loads(resp.read().decode()).get("url")
+        except Exception as e:
+            logger.error(f"Error obteniendo URL del audio: {e}")
+            return None
+
+    # Paso 2: descargar el archivo de audio a /tmp
+    dl_req = urllib.request.Request(audio_url, headers={"Authorization": f"Bearer {api_token}"})
+    try:
+        with urllib.request.urlopen(dl_req) as resp:
+            audio_bytes = resp.read()
+    except Exception as e:
+        logger.error(f"Error descargando audio: {e}")
+        return None
+
+    # Paso 3: transcribir con faster-whisper (caché en /tmp)
+    tmp_path = None
+    try:
+        import os as _os
+        _os.environ["HF_HOME"] = "/tmp/hf"
+        _os.environ["TRANSFORMERS_CACHE"] = "/tmp/hf"
+
+        from faster_whisper import WhisperModel
+
+        with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False, dir="/tmp") as tmp:
+            tmp.write(audio_bytes)
+            tmp_path = tmp.name
+
+        model = WhisperModel("base", device="cpu", compute_type="int8", download_root="/tmp/whisper")
+        segments, _ = model.transcribe(tmp_path, beam_size=5)
+        transcript = " ".join(seg.text for seg in segments).strip()
+        return transcript
+    except Exception as e:
+        logger.error(f"Error transcribiendo audio: {e}")
+        return None
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
 def send_whatsapp_message(to_number, text):
