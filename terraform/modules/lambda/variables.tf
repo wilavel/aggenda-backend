@@ -82,8 +82,9 @@ variable "clinics_lambda_zip_path" {
 }
 
 variable "whatsapp_lambda_zip_path" {
-  description = "Path to the WhatsApp webhook Lambda function ZIP file"
+  description = "Unused - whatsapp webhook uses container image via ECR"
   type        = string
+  default     = ""
 }
 
 variable "whatsapp_verify_token" {

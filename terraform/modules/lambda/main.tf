@@ -192,15 +192,45 @@ resource "aws_lambda_function" "users_crud" {
   }
 }
 
+resource "aws_ecr_repository" "whatsapp_webhook" {
+  name                 = "${var.project_name}-whatsapp-webhook-${var.environment}"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+resource "aws_ecr_repository_policy" "whatsapp_webhook" {
+  repository = aws_ecr_repository.whatsapp_webhook.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "LambdaECRAccess"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+        Action = [
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+        ]
+      }
+    ]
+  })
+}
+
 resource "aws_lambda_function" "whatsapp_webhook" {
-  filename         = var.whatsapp_lambda_zip_path
-  source_code_hash = filebase64sha256(var.whatsapp_lambda_zip_path)
-  function_name    = "whatsapp-webhook-${var.environment}"
-  role             = aws_iam_role.lambda_role.arn
-  handler          = "get_ws_message.lambda_handler"
-  runtime          = var.lambda_runtime
-  timeout          = var.lambda_timeout
-  memory_size      = var.lambda_memory_size
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.whatsapp_webhook.repository_url}:latest"
+  function_name = "whatsapp-webhook-${var.environment}"
+  role          = aws_iam_role.lambda_role.arn
+  timeout       = 300
+  memory_size   = 1024
 
   environment {
     variables = {

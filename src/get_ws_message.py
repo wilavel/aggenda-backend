@@ -120,22 +120,28 @@ def transcribe_whatsapp_audio(media_id: str, audio_url: str | None = None) -> st
 
     # Paso 1: obtener la URL de descarga
     if not audio_url:
-        meta_url = f"https://graph.facebook.com/v19.0/{media_id}"
+        meta_url = f"https://graph.facebook.com/v21.0/{media_id}"
         req = urllib.request.Request(meta_url, headers={"Authorization": f"Bearer {api_token}"})
         try:
             with urllib.request.urlopen(req) as resp:
-                audio_url = json.loads(resp.read().decode()).get("url")
+                data = json.loads(resp.read().decode())
+                audio_url = data.get("url")
         except Exception as e:
             logger.error(f"Error obteniendo URL del audio: {e}")
             return None
 
+    if not audio_url:
+        logger.error(f"Meta API no devolvió URL para media_id={media_id}")
+        return None
+
     # Paso 2: descargar el archivo de audio a /tmp
+    logger.info(f"Descargando audio desde URL de Meta para media_id={media_id}")
     dl_req = urllib.request.Request(audio_url, headers={"Authorization": f"Bearer {api_token}"})
     try:
         with urllib.request.urlopen(dl_req) as resp:
             audio_bytes = resp.read()
     except Exception as e:
-        logger.error(f"Error descargando audio: {e}")
+        logger.error(f"Error descargando audio (media_id={media_id}): {e}")
         return None
 
     # Paso 3: transcribir con faster-whisper (caché en /tmp)
@@ -175,7 +181,7 @@ def send_whatsapp_message(to_number, text):
         logger.error("Faltan variables de entorno WHATSAPP_API_TOKEN o WHATSAPP_PHONE_NUMBER_ID")
         return False
 
-    url = f"https://graph.facebook.com/v19.0/{phone_number_id}/messages"
+    url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
     payload = json.dumps({
         "messaging_product": "whatsapp",
         "to": to_number,

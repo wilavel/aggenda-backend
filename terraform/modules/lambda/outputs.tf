@@ -72,3 +72,8 @@ output "appointments_lambda_function_name" {
   description = "Name of the appointments_crud Lambda function"
   value       = aws_lambda_function.appointments_crud.function_name
 }
+
+output "whatsapp_ecr_repository_url" {
+  description = "URL del repositorio ECR para la Lambda de WhatsApp"
+  value       = aws_ecr_repository.whatsapp_webhook.repository_url
+}
