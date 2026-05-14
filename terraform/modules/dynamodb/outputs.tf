@@ -40,3 +40,19 @@ output "doctor_availability_table_name" {
 output "doctor_availability_table_arn" {
   value = aws_dynamodb_table.doctor_availability.arn
 }
+
+output "medical_records_table_name" {
+  value = aws_dynamodb_table.medical_records.name
+}
+
+output "medical_records_table_arn" {
+  value = aws_dynamodb_table.medical_records.arn
+}
+
+output "medical_record_notes_table_name" {
+  value = aws_dynamodb_table.medical_record_notes.name
+}
+
+output "medical_record_notes_table_arn" {
+  value = aws_dynamodb_table.medical_record_notes.arn
+}

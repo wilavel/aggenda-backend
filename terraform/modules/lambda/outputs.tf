@@ -77,3 +77,13 @@ output "whatsapp_ecr_repository_url" {
   description = "URL del repositorio ECR para la Lambda de WhatsApp"
   value       = aws_ecr_repository.whatsapp_webhook.repository_url
 }
+
+output "medical_records_lambda_invoke_arn" {
+  description = "Invoke ARN of the medical_records_crud Lambda function"
+  value       = aws_lambda_function.medical_records_crud.invoke_arn
+}
+
+output "medical_records_lambda_function_name" {
+  description = "Name of the medical_records_crud Lambda function"
+  value       = aws_lambda_function.medical_records_crud.function_name
+}

@@ -52,6 +52,12 @@ module "lambda" {
   appointments_table_name      = module.dynamodb.appointments_table_name
   appointments_table_arn       = module.dynamodb.appointments_table_arn
 
+  medical_records_lambda_zip_path  = "../../../dist/medical_records_lambda.zip"
+  medical_records_table_name       = module.dynamodb.medical_records_table_name
+  medical_records_table_arn        = module.dynamodb.medical_records_table_arn
+  medical_record_notes_table_name  = module.dynamodb.medical_record_notes_table_name
+  medical_record_notes_table_arn   = module.dynamodb.medical_record_notes_table_arn
+
   whatsapp_verify_token    = var.whatsapp_verify_token
   whatsapp_api_token       = var.whatsapp_api_token
   whatsapp_phone_number_id = var.whatsapp_phone_number_id
@@ -77,4 +83,7 @@ module "api_gateway" {
   availability_lambda_function_name  = module.lambda.availability_lambda_function_name
   appointments_lambda_invoke_arn     = module.lambda.appointments_lambda_invoke_arn
   appointments_lambda_function_name  = module.lambda.appointments_lambda_function_name
+
+  medical_records_lambda_invoke_arn    = module.lambda.medical_records_lambda_invoke_arn
+  medical_records_lambda_function_name = module.lambda.medical_records_lambda_function_name
 }

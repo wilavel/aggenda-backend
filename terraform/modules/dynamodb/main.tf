@@ -150,6 +150,44 @@ resource "aws_dynamodb_table" "appointments_table" {
   }
 }
 
+resource "aws_dynamodb_table" "medical_records" {
+  name           = "medical-records-${var.environment}"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "patient_id"
+
+  attribute {
+    name = "patient_id"
+    type = "S"
+  }
+
+  tags = {
+    Name        = "medical-records-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+resource "aws_dynamodb_table" "medical_record_notes" {
+  name         = "medical-record-notes-${var.environment}"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "patient_id"
+  range_key    = "note_id"
+
+  attribute {
+    name = "patient_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "note_id"
+    type = "S"
+  }
+
+  tags = {
+    Name        = "medical-record-notes-${var.environment}"
+    Environment = var.environment
+  }
+}
+
 # IAM Policy for DynamoDB access
 resource "aws_iam_policy" "lambda_dynamodb_policy" {
   name        = "lambda_dynamodb_policy_${var.environment}"
@@ -175,7 +213,10 @@ resource "aws_iam_policy" "lambda_dynamodb_policy" {
           aws_dynamodb_table.appointments_table.arn,
           "${aws_dynamodb_table.appointments_table.arn}/index/*",
           aws_dynamodb_table.doctor_availability.arn,
-          "${aws_dynamodb_table.doctor_availability.arn}/index/*"
+          "${aws_dynamodb_table.doctor_availability.arn}/index/*",
+          aws_dynamodb_table.medical_records.arn,
+          aws_dynamodb_table.medical_record_notes.arn,
+          "${aws_dynamodb_table.medical_record_notes.arn}/index/*"
         ]
       },
       {

@@ -63,6 +63,15 @@ cd temp_package && zip -r ../dist/appointments_lambda.zip . && cd ..
 rm -rf temp_package
 echo "dist/appointments_lambda.zip empaquetado correctamente."
 
+# ── medical_records_lambda.zip ───────────────────────────────────────────────
+rm -f dist/medical_records_lambda.zip && rm -rf temp_package && mkdir -p temp_package
+cp src/medical_records_function.py temp_package/
+copy_shared temp_package
+copy_libs temp_package
+cd temp_package && zip -r ../dist/medical_records_lambda.zip . && cd ..
+rm -rf temp_package
+echo "dist/medical_records_lambda.zip empaquetado correctamente."
+
 # ── get_ws_message_lambda.zip ────────────────────────────────────────────────
 rm -f dist/get_ws_message_lambda.zip && rm -rf temp_package && mkdir -p temp_package
 cp src/get_ws_message.py temp_package/

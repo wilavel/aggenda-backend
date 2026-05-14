@@ -143,3 +143,28 @@ variable "appointments_table_arn" {
   description = "ARN of the DynamoDB table for appointments"
   type        = string
 }
+
+variable "medical_records_lambda_zip_path" {
+  description = "Path to the medical records Lambda function ZIP file"
+  type        = string
+}
+
+variable "medical_records_table_name" {
+  description = "Name of the DynamoDB table for medical records"
+  type        = string
+}
+
+variable "medical_records_table_arn" {
+  description = "ARN of the DynamoDB table for medical records"
+  type        = string
+}
+
+variable "medical_record_notes_table_name" {
+  description = "Name of the DynamoDB table for medical record notes"
+  type        = string
+}
+
+variable "medical_record_notes_table_arn" {
+  description = "ARN of the DynamoDB table for medical record notes"
+  type        = string
+}

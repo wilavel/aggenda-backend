@@ -78,3 +78,13 @@ variable "appointments_lambda_function_name" {
   description = "Name of the appointments_crud Lambda function"
   type        = string
 }
+
+variable "medical_records_lambda_invoke_arn" {
+  description = "Invoke ARN of the medical_records_crud Lambda function"
+  type        = string
+}
+
+variable "medical_records_lambda_function_name" {
+  description = "Name of the medical_records_crud Lambda function"
+  type        = string
+}

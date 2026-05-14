@@ -304,6 +304,86 @@ resource "aws_apigatewayv2_route" "get_patient_appointments" {
   authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
 }
 
+# ── Medical Records ───────────────────────────────────────────────────────────
+resource "aws_apigatewayv2_integration" "medical_records_integration" {
+  api_id                 = aws_apigatewayv2_api.users_api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = var.medical_records_lambda_invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_lambda_permission" "medical_records_api_gw" {
+  statement_id  = "AllowExecutionFromAPIGatewayMedicalRecords"
+  action        = "lambda:InvokeFunction"
+  function_name = var.medical_records_lambda_function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.users_api.execution_arn}/*/*"
+}
+
+resource "aws_apigatewayv2_route" "get_medical_record" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "GET /patients/{patient_id}/medical-record"
+  target             = "integrations/${aws_apigatewayv2_integration.medical_records_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "post_medical_record" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "POST /patients/{patient_id}/medical-record"
+  target             = "integrations/${aws_apigatewayv2_integration.medical_records_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "put_medical_record" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "PUT /patients/{patient_id}/medical-record"
+  target             = "integrations/${aws_apigatewayv2_integration.medical_records_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "get_medical_record_notes" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "GET /patients/{patient_id}/medical-record/notes"
+  target             = "integrations/${aws_apigatewayv2_integration.medical_records_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "post_medical_record_note" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "POST /patients/{patient_id}/medical-record/notes"
+  target             = "integrations/${aws_apigatewayv2_integration.medical_records_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "get_medical_record_note" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "GET /patients/{patient_id}/medical-record/notes/{note_id}"
+  target             = "integrations/${aws_apigatewayv2_integration.medical_records_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "put_medical_record_note" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "PUT /patients/{patient_id}/medical-record/notes/{note_id}"
+  target             = "integrations/${aws_apigatewayv2_integration.medical_records_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+resource "aws_apigatewayv2_route" "delete_medical_record_note" {
+  api_id             = aws_apigatewayv2_api.users_api.id
+  route_key          = "DELETE /patients/{patient_id}/medical-record/notes/{note_id}"
+  target             = "integrations/${aws_apigatewayv2_integration.medical_records_integration.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
 # GET /whatsapp/webhook — verificación del webhook de Meta
 resource "aws_apigatewayv2_route" "whatsapp_verify" {
   api_id    = aws_apigatewayv2_api.users_api.id

@@ -64,7 +64,10 @@ resource "aws_iam_policy" "lambda_dynamodb_policy" {
           var.availability_table_arn,
           "${var.availability_table_arn}/index/*",
           var.appointments_table_arn,
-          "${var.appointments_table_arn}/index/*"
+          "${var.appointments_table_arn}/index/*",
+          var.medical_records_table_arn,
+          var.medical_record_notes_table_arn,
+          "${var.medical_record_notes_table_arn}/index/*"
         ]
       }
     ]
@@ -311,6 +314,31 @@ resource "aws_lambda_function" "appointments_crud" {
       APPOINTMENTS_TABLE = var.appointments_table_name
       AVAILABILITY_TABLE = var.availability_table_name
       USER_POOL_ID       = var.cognito_user_pool_id
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+resource "aws_lambda_function" "medical_records_crud" {
+  filename         = var.medical_records_lambda_zip_path
+  source_code_hash = filebase64sha256(var.medical_records_lambda_zip_path)
+  function_name    = "medical-records-crud-${var.environment}"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "medical_records_function.lambda_handler"
+  runtime          = var.lambda_runtime
+  timeout          = var.lambda_timeout
+  memory_size      = var.lambda_memory_size
+
+  environment {
+    variables = {
+      ENVIRONMENT                  = var.environment
+      MEDICAL_RECORDS_TABLE        = var.medical_records_table_name
+      MEDICAL_RECORD_NOTES_TABLE   = var.medical_record_notes_table_name
+      USER_POOL_ID                 = var.cognito_user_pool_id
     }
   }
 
