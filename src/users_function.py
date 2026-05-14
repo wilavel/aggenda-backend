@@ -10,7 +10,7 @@ import logging
 import boto3
 from boto3.dynamodb.conditions import Key
 
-from shared.utils import parse_event, is_admin_user, ok, err, PAGE_SIZE
+from shared.utils import parse_event, is_admin_user, is_manager_or_admin, get_user_groups, ok, err, PAGE_SIZE
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -33,9 +33,9 @@ def lambda_handler(event, context):
         http_method, path = parse_event(event)
         logger.info(f"Method: {http_method}, Path: {path}")
 
-        # Admin-only mutations
-        if http_method in ('POST', 'PUT', 'DELETE') and not is_admin_user(event):
-            return err('Access denied. Only Administrators can perform this operation.', 403)
+        # POST, PUT, DELETE require admin or manager
+        if http_method in ('POST', 'PUT', 'DELETE') and not is_manager_or_admin(event):
+            return err('Access denied. Only Administrators or Managers can perform this operation.', 403)
 
         if http_method == 'POST' and path == '/users':
             return create_user(event)
@@ -48,7 +48,7 @@ def lambda_handler(event, context):
         if http_method == 'PUT' and path.startswith('/users/'):
             return update_user(path.split('/')[-1], event)
         if http_method == 'DELETE' and path.startswith('/users/'):
-            return delete_user(path.split('/')[-1])
+            return delete_user(path.split('/')[-1], event)
 
         return err(f'Method {http_method} not allowed for path {path}', 400)
 
@@ -138,6 +138,11 @@ def create_user(event):
 
         if user_group not in VALID_GROUPS:
             return err(f'Invalid group. Must be one of: {", ".join(VALID_GROUPS)}', 400)
+
+        # Managers can only create Doctors and Patients
+        caller_groups = get_user_groups(event)
+        if 'Administrators' not in caller_groups and user_group not in ('Doctors', 'Patients'):
+            return err('Managers can only create Doctors or Patients.', 403)
 
         # Generate a secure temporary password
         temp_password = _generate_password()
@@ -235,6 +240,13 @@ def update_user(user_id, event):
         if 'Item' not in response:
             return err('User not found', 404, user_id=user_id)
 
+        # Managers can only edit Doctors and Patients
+        caller_groups = get_user_groups(event)
+        if 'Administrators' not in caller_groups:
+            target_group = response['Item'].get('group', '')
+            if target_group not in ('Doctors', 'Patients'):
+                return err('Managers can only edit Doctors or Patients.', 403)
+
         user = response['Item']
         pool_id = os.environ['USER_POOL_ID']
 
@@ -294,11 +306,19 @@ def update_user(user_id, event):
         return err('Error updating user')
 
 
-def delete_user(user_id):
+def delete_user(user_id, event=None):
     try:
         response = _table().get_item(Key={'id': user_id})
         if 'Item' not in response:
             return err('User not found', 404, user_id=user_id)
+
+        # Managers can only delete Doctors and Patients
+        if event:
+            caller_groups = get_user_groups(event)
+            if 'Administrators' not in caller_groups:
+                target_group = response['Item'].get('group', '')
+                if target_group not in ('Doctors', 'Patients'):
+                    return err('Managers can only delete Doctors or Patients.', 403)
 
         user = response['Item']
         pool_id = os.environ['USER_POOL_ID']

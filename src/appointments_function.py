@@ -7,7 +7,7 @@ import logging
 import boto3
 from boto3.dynamodb.conditions import Key
 
-from shared.utils import parse_event, ok, err
+from shared.utils import parse_event, is_manager_or_admin, get_user_groups, ok, err
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,8 +25,10 @@ def lambda_handler(event, context):
         http_method, path = parse_event(event)
         logger.info(f"Method: {http_method}, Path: {path}")
 
-        # POST /appointments
+        # POST /appointments — managers, admins and doctors
         if http_method == 'POST' and path == '/appointments':
+            if not _can_manage_appointments(event):
+                return err('Access denied. Only Managers, Administrators or Doctors can create appointments.', 403)
             return create_appointment(event)
 
         # GET /appointments/{id}
@@ -46,8 +48,10 @@ def lambda_handler(event, context):
             params = event.get('queryStringParameters') or {}
             return get_appointments_by_patient(patient_id, params.get('date'))
 
-        # DELETE /appointments/{id}
+        # DELETE /appointments/{id} — managers, admins and doctors
         if http_method == 'DELETE' and _match_id(path, '/appointments/'):
+            if not _can_manage_appointments(event):
+                return err('Access denied. Only Managers, Administrators or Doctors can cancel appointments.', 403)
             appointment_id = _extract_segment(path, 1)
             return cancel_appointment(appointment_id)
 
@@ -271,6 +275,11 @@ def _valid_time(t):
                 and 0 <= int(parts[1]) <= 59)
     except Exception:
         return False
+
+
+def _can_manage_appointments(event):
+    """Managers, Administrators and Doctors can create/cancel appointments."""
+    return bool(get_user_groups(event) & {'Managers', 'Administrators', 'Doctors'})
 
 
 def _match(path, prefix, suffix):

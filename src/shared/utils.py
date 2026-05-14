@@ -23,26 +23,43 @@ def parse_event(event):
     return http_method, path
 
 
-def is_admin_user(event):
-    """
-    Check admin privileges from JWT claims injected by the API GW v2 JWT authorizer.
-    Reads claims directly from the event — no additional Cognito API call needed.
-    """
+def _get_claims(event):
+    return (
+        event.get('requestContext', {})
+        .get('authorizer', {})
+        .get('jwt', {})
+        .get('claims', {})
+    )
+
+
+def get_user_groups(event):
+    """Return the set of Cognito groups the caller belongs to."""
     try:
-        claims = (
-            event.get('requestContext', {})
-            .get('authorizer', {})
-            .get('jwt', {})
-            .get('claims', {})
-        )
-        groups_str = claims.get('cognito:groups', '')
+        groups_str = _get_claims(event).get('cognito:groups', '')
         if not groups_str or groups_str == '[]':
-            return False
-        groups = [g.strip() for g in groups_str.strip('[]').split(',') if g.strip()]
-        return 'Administrators' in groups
+            return set()
+        return {g.strip() for g in groups_str.strip('[]').split(',') if g.strip()}
     except Exception as exc:
-        logger.error(f"Error checking admin privileges: {exc}")
-        return False
+        logger.error(f"Error reading user groups: {exc}")
+        return set()
+
+
+def get_caller_email(event):
+    """Return the caller's email from JWT claims."""
+    try:
+        return _get_claims(event).get('email', '')
+    except Exception:
+        return ''
+
+
+def is_admin_user(event):
+    """True if the caller belongs to the Administrators group."""
+    return 'Administrators' in get_user_groups(event)
+
+
+def is_manager_or_admin(event):
+    """True if the caller is a Manager or Administrator."""
+    return bool(get_user_groups(event) & {'Managers', 'Administrators'})
 
 
 def ok(body, status=200):

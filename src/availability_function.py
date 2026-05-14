@@ -7,7 +7,7 @@ import logging
 import boto3
 from boto3.dynamodb.conditions import Key
 
-from shared.utils import parse_event, is_admin_user, ok, err
+from shared.utils import parse_event, is_manager_or_admin, get_user_groups, ok, err
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,8 +27,8 @@ def lambda_handler(event, context):
 
         # POST /doctors/{doctor_id}/availability
         if http_method == 'POST' and _match(path, '/doctors/', '/availability'):
-            if not is_admin_user(event):
-                return err('Access denied. Only Administrators can configure availability.', 403)
+            if not _can_write_availability(event):
+                return err('Access denied. Only Managers, Administrators or Doctors can configure availability.', 403)
             doctor_id = _extract_segment(path, 1)
             return create_slot(event, doctor_id)
 
@@ -39,15 +39,15 @@ def lambda_handler(event, context):
 
         # PUT /doctors/{doctor_id}/availability/{slot_id}
         if http_method == 'PUT' and _match_deep(path, '/doctors/', '/availability/'):
-            if not is_admin_user(event):
-                return err('Access denied. Only Administrators can edit availability.', 403)
+            if not _can_write_availability(event):
+                return err('Access denied. Only Managers, Administrators or Doctors can edit availability.', 403)
             doctor_id, slot_id = _extract_doctor_and_slot(path)
             return update_slot(event, doctor_id, slot_id)
 
         # DELETE /doctors/{doctor_id}/availability/{slot_id}
         if http_method == 'DELETE' and _match_deep(path, '/doctors/', '/availability/'):
-            if not is_admin_user(event):
-                return err('Access denied. Only Administrators can delete availability.', 403)
+            if not _can_write_availability(event):
+                return err('Access denied. Only Managers, Administrators or Doctors can delete availability.', 403)
             doctor_id, slot_id = _extract_doctor_and_slot(path)
             return delete_slot(doctor_id, slot_id)
 
@@ -232,6 +232,12 @@ def _extract_doctor_and_slot(path):
     parts = path.strip('/').split('/')
     # doctors / {doctor_id} / availability / {slot_id}
     return parts[1], parts[3]
+
+
+def _can_write_availability(event):
+    """Managers, Administrators and Doctors can write availability slots."""
+    groups = get_user_groups(event)
+    return bool(groups & {'Managers', 'Administrators', 'Doctors'})
 
 
 def _valid_time(t):
